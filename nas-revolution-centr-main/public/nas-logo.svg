@@ -1,0 +1,60 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="720" fill="#F5E6D3"/>
+  
+  <!-- Outer Circle with decorative border -->
+  <circle cx="640" cy="280" r="180" fill="url(#blueGradient)" stroke="#C4A575" stroke-width="8"/>
+  <circle cx="640" cy="280" r="165" fill="none" stroke="#C4A575" stroke-width="2" stroke-dasharray="8 4"/>
+  
+  <!-- NAS Text -->
+  <text x="640" y="300" font-family="serif" font-size="120" font-weight="bold" fill="white" text-anchor="middle">NAS</text>
+  
+  <!-- Open Book -->
+  <g transform="translate(640, 380)">
+    <!-- Book pages -->
+    <path d="M-200,0 Q-200,-30 -180,-40 L-20,-60 L-20,80 L-180,100 Q-200,90 -200,60 Z" fill="#F5E6D3" stroke="#8B7355" stroke-width="2"/>
+    <path d="M200,0 Q200,-30 180,-40 L20,-60 L20,80 L180,100 Q200,90 200,60 Z" fill="#F5E6D3" stroke="#8B7355" stroke-width="2"/>
+    
+    <!-- Book binding -->
+    <rect x="-3" y="-60" width="6" height="160" fill="#8B7355"/>
+    
+    <!-- Page lines (left page) -->
+    <line x1="-160" y1="-20" x2="-40" y2="-30" stroke="#8B7355" stroke-width="1" opacity="0.3"/>
+    <line x1="-160" y1="0" x2="-40" y2="-10" stroke="#8B7355" stroke-width="1" opacity="0.3"/>
+    <line x1="-160" y1="20" x2="-40" y2="10" stroke="#8B7355" stroke-width="1" opacity="0.3"/>
+    <line x1="-160" y1="40" x2="-40" y2="30" stroke="#8B7355" stroke-width="1" opacity="0.3"/>
+    
+    <!-- Page lines (right page) -->
+    <line x1="40" y1="-30" x2="160" y2="-20" stroke="#8B7355" stroke-width="1" opacity="0.3"/>
+    <line x1="40" y1="-10" x2="160" y2="0" stroke="#8B7355" stroke-width="1" opacity="0.3"/>
+    <line x1="40" y1="10" x2="160" y2="20" stroke="#8B7355" stroke-width="1" opacity="0.3"/>
+    <line x1="40" y1="30" x2="160" y2="40" stroke="#8B7355" stroke-width="1" opacity="0.3"/>
+  </g>
+  
+  <!-- Feather Quill (left side) -->
+  <g transform="translate(380, 350) rotate(-25)">
+    <path d="M0,0 Q-5,-80 0,-120 Q5,-80 0,0" fill="#C4A575" stroke="#8B7355" stroke-width="1.5"/>
+    <path d="M0,-120 L-8,-100 M0,-110 L-6,-95 M0,-100 L-5,-88 M0,-90 L-4,-80" stroke="#8B7355" stroke-width="1"/>
+    <path d="M0,-120 L8,-100 M0,-110 L6,-95 M0,-100 L5,-88 M0,-90 L4,-80" stroke="#8B7355" stroke-width="1"/>
+  </g>
+  
+  <!-- Inkwell (left side) -->
+  <g transform="translate(320, 450)">
+    <rect x="-20" y="0" width="40" height="30" rx="5" fill="#2B4C7E" stroke="#8B7355" stroke-width="2"/>
+    <ellipse cx="0" cy="0" rx="22" ry="8" fill="#1E3A5F"/>
+  </g>
+  
+  <!-- Main Title -->
+  <text x="640" y="560" font-family="serif" font-size="68" font-weight="bold" fill="#2B5A8E" text-anchor="middle" letter-spacing="4">NAS REVOLUTION CENTRE</text>
+  <line x1="180" y1="575" x2="1100" y2="575" stroke="#2B5A8E" stroke-width="3"/>
+  
+  <!-- Tagline -->
+  <text x="640" y="640" font-family="serif" font-size="56" font-weight="600" fill="#2B5A8E" text-anchor="middle" letter-spacing="8">IGNITE YOUR POTENTIAL</text>
+  
+  <!-- Gradients -->
+  <defs>
+    <linearGradient id="blueGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A7BA7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2B4C7E;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+</svg>
