@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ShieldCheck, ArrowLeft, DeviceMobile, Envelope, Check, LockKey } from "@phosphor-icons/react"
+import { ShieldCheck, ArrowLeft, Envelope, Check, LockKey } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import GradientBackground from "@/components/school/GradientBackground"
 import { OTPService } from "@/services/otp"
@@ -14,15 +13,15 @@ interface AdminLoginPageProps {
   onBackToHome: () => void
 }
 
+const ADMIN_EMAIL = "nasrevolutioncentre@gmail.com"
+
 export default function AdminLoginPage({ onLogin, onBackToHome }: AdminLoginPageProps) {
   const [step, setStep] = useState<"request" | "verify">("request")
   const [isLoading, setIsLoading] = useState(false)
   const [otp, setOtp] = useState(["", "", "", "", "", ""])
-  const [generatedOTPs, setGeneratedOTPs] = useState<{ phone1: string; phone2: string; email: string } | null>(null)
+  const [generatedOTP, setGeneratedOTP] = useState<string | null>(null)
   const [timer, setTimer] = useState(300)
   const [canResend, setCanResend] = useState(false)
-
-  const adminContacts = OTPService.getAdminContacts()
 
   useEffect(() => {
     if (step === "verify" && timer > 0) {
@@ -46,19 +45,24 @@ export default function AdminLoginPage({ onLogin, onBackToHome }: AdminLoginPage
   }
 
   const handleRequestOTP = async () => {
+    if (!OTPService.isAuthorizedAdminEmail(ADMIN_EMAIL)) {
+      toast.error("Unauthorized email. Admin access only.")
+      return
+    }
+
     setIsLoading(true)
     
     try {
-      const response = await OTPService.sendAdminOTP()
+      const response = await OTPService.sendAdminEmailOTP()
       
-      if (response.success && response.otps) {
-        setGeneratedOTPs(response.otps)
-        toast.success("OTP sent to all registered contacts!")
+      if (response.success && response.otp) {
+        setGeneratedOTP(response.otp)
+        toast.success("OTP sent to admin email!")
         setStep("verify")
         setTimer(300)
         setCanResend(false)
       } else {
-        toast.error(response.message || "Failed to send OTP")
+        toast.error(response.message || "Failed to send OTP. Please try again.")
       }
     } catch (error) {
       console.error("Error sending OTP:", error)
@@ -104,44 +108,26 @@ export default function AdminLoginPage({ onLogin, onBackToHome }: AdminLoginPage
     setIsLoading(true)
 
     try {
-      let verified = false
-      let verifiedContact = ""
+      const result = await OTPService.verifyOTP(ADMIN_EMAIL, otpString)
 
-      for (const phone of adminContacts.phones) {
-        const result = await OTPService.verifyOTP(phone, otpString)
-        if (result.success) {
-          verified = true
-          verifiedContact = phone
-          break
-        }
-      }
-
-      if (!verified) {
-        const emailResult = await OTPService.verifyOTP(adminContacts.email, otpString)
-        if (emailResult.success) {
-          verified = true
-          verifiedContact = adminContacts.email
-        }
-      }
-
-      if (verified) {
+      if (result.success) {
         toast.success("Login successful!")
         AuthHelper.createSession("admin", "ADMIN001", {
-          verifiedContact,
+          verifiedContact: ADMIN_EMAIL,
           loginTime: new Date().toISOString()
         })
         setTimeout(() => {
           onLogin("ADMIN001")
         }, 500)
       } else {
-        toast.error("Invalid or expired OTP")
+        toast.error(result.message || "Invalid OTP. Access denied.")
         setOtp(["", "", "", "", "", ""])
         const firstInput = document.getElementById("otp-0")
         firstInput?.focus()
       }
     } catch (error) {
       console.error("Error verifying OTP:", error)
-      toast.error("Failed to verify OTP")
+      toast.error("Invalid OTP. Access denied.")
     } finally {
       setIsLoading(false)
     }
@@ -195,7 +181,7 @@ export default function AdminLoginPage({ onLogin, onBackToHome }: AdminLoginPage
               transition={{ delay: 0.4 }}
               className="text-sm text-gray-300"
             >
-              Secure OTP-based authentication
+              Secure Email OTP Authentication
             </motion.p>
           </div>
 
@@ -214,38 +200,30 @@ export default function AdminLoginPage({ onLogin, onBackToHome }: AdminLoginPage
                   <div className="space-y-5 relative z-10">
                     <div className="text-center mb-6">
                       <h2 className="text-xl font-bold text-white mb-2">Request OTP</h2>
-                      <p className="text-sm text-gray-300">OTP will be sent to all registered contacts</p>
+                      <p className="text-sm text-gray-300">OTP will be sent to the admin email</p>
                     </div>
 
                     <div className="space-y-3">
-                      <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
-                        <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-                          <DeviceMobile size={20} className="text-blue-400" />
+                      <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500/30 to-purple-500/30 flex items-center justify-center border border-blue-400/30">
+                          <Envelope size={24} className="text-blue-400" />
                         </div>
-                        <div>
-                          <p className="text-xs text-gray-400">Phone 1</p>
-                          <p className="text-sm font-semibold text-white">+91 {adminContacts.phones[0]}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
-                        <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
-                          <DeviceMobile size={20} className="text-purple-400" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-400">Phone 2</p>
-                          <p className="text-sm font-semibold text-white">+91 {adminContacts.phones[1]}</p>
+                        <div className="flex-1">
+                          <p className="text-xs text-gray-400 mb-1">Admin Email</p>
+                          <Input
+                            type="email"
+                            value={ADMIN_EMAIL}
+                            readOnly
+                            className="bg-white/5 border-white/10 text-white text-sm font-semibold cursor-not-allowed focus:ring-0 focus:border-white/10"
+                          />
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
-                        <div className="w-10 h-10 rounded-full bg-pink-500/20 flex items-center justify-center">
-                          <Envelope size={20} className="text-pink-400" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-400">Email</p>
-                          <p className="text-sm font-semibold text-white">{adminContacts.email}</p>
-                        </div>
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                        <LockKey size={16} className="text-blue-400" />
+                        <p className="text-xs text-blue-300">
+                          Admin access is restricted to the authorized email only
+                        </p>
                       </div>
                     </div>
 
@@ -261,8 +239,8 @@ export default function AdminLoginPage({ onLogin, onBackToHome }: AdminLoginPage
                         </span>
                       ) : (
                         <span className="flex items-center gap-2">
-                          <LockKey size={20} />
-                          Send OTP to All Contacts
+                          <Envelope size={20} />
+                          Send OTP to Admin Email
                         </span>
                       )}
                     </Button>
@@ -283,7 +261,8 @@ export default function AdminLoginPage({ onLogin, onBackToHome }: AdminLoginPage
                   <div className="space-y-5 relative z-10">
                     <div className="text-center mb-6">
                       <h2 className="text-xl font-bold text-white mb-2">Verify OTP</h2>
-                      <p className="text-sm text-gray-300">Enter the 6-digit code sent to your contacts</p>
+                      <p className="text-sm text-gray-300">Enter the 6-digit code sent to</p>
+                      <p className="text-sm text-blue-400 font-semibold mt-1">{ADMIN_EMAIL}</p>
                     </div>
 
                     <div className="flex justify-center gap-2 mb-6">
@@ -346,15 +325,13 @@ export default function AdminLoginPage({ onLogin, onBackToHome }: AdminLoginPage
                       ← Back to request OTP
                     </button>
 
-                    {generatedOTPs && (
+                    {generatedOTP && (
                       <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20">
-                        <p className="text-xs text-yellow-300 font-semibold mb-2">🔐 DEMO MODE - Generated OTPs:</p>
+                        <p className="text-xs text-yellow-300 font-semibold mb-2">🔐 DEMO MODE - Generated OTP:</p>
                         <div className="space-y-1 text-xs text-gray-300">
-                          <p>Phone 1: <span className="font-mono font-bold text-white">{generatedOTPs.phone1}</span></p>
-                          <p>Phone 2: <span className="font-mono font-bold text-white">{generatedOTPs.phone2}</span></p>
-                          <p>Email: <span className="font-mono font-bold text-white">{generatedOTPs.email}</span></p>
+                          <p>Email OTP: <span className="font-mono font-bold text-white text-lg">{generatedOTP}</span></p>
                         </div>
-                        <p className="text-xs text-yellow-300 mt-2">In production, OTPs will be sent via SMS and email.</p>
+                        <p className="text-xs text-yellow-300 mt-2">In production, OTP will be sent via Supabase Email.</p>
                       </div>
                     )}
                   </div>
@@ -369,7 +346,7 @@ export default function AdminLoginPage({ onLogin, onBackToHome }: AdminLoginPage
             transition={{ delay: 0.5 }}
             className="text-xs text-center text-gray-400 mt-6"
           >
-            Multi-factor authentication with OTP verification
+            Secure email OTP authentication for admin access
           </motion.p>
         </motion.div>
       </div>

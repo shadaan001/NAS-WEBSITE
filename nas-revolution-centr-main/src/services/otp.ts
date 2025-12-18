@@ -17,10 +17,7 @@ export interface VerifyOTPResponse {
   message: string
 }
 
-const ADMIN_CONTACTS = {
-  phones: ["9073040640", "9903847541"],
-  email: "shadaan001@gmail.com"
-}
+const ADMIN_EMAIL = "nasrevolutioncentre@gmail.com"
 
 const OTP_EXPIRY_MS = 5 * 60 * 1000
 const MAX_ATTEMPTS = 3
@@ -54,7 +51,7 @@ export class OTPService {
       console.error("Error sending OTP:", error)
       return {
         success: false,
-        message: "Failed to send OTP"
+        message: "Failed to send OTP. Please try again."
       }
     }
   }
@@ -94,7 +91,7 @@ export class OTPService {
         
         return {
           success: false,
-          message: `Invalid OTP. ${MAX_ATTEMPTS - otpData.attempts} attempts remaining.`
+          message: "Invalid OTP. Access denied."
         }
       }
 
@@ -113,45 +110,36 @@ export class OTPService {
     }
   }
 
-  static async sendAdminOTP(): Promise<{ success: boolean; message: string; otps?: { phone1: string; phone2: string; email: string } }> {
+  static async sendAdminEmailOTP(): Promise<{ success: boolean; message: string; otp?: string }> {
     try {
-      const otp1Response = await this.sendOTP(ADMIN_CONTACTS.phones[0])
-      const otp2Response = await this.sendOTP(ADMIN_CONTACTS.phones[1])
-      const emailResponse = await this.sendOTP(ADMIN_CONTACTS.email)
+      const emailResponse = await this.sendOTP(ADMIN_EMAIL)
 
-      if (otp1Response.success && otp2Response.success && emailResponse.success) {
+      if (emailResponse.success) {
         return {
           success: true,
-          message: "OTP sent to all registered contacts",
-          otps: {
-            phone1: otp1Response.otp!,
-            phone2: otp2Response.otp!,
-            email: emailResponse.otp!
-          }
+          message: "OTP sent to admin email",
+          otp: emailResponse.otp
         }
       }
 
       return {
         success: false,
-        message: "Failed to send OTP to some contacts"
+        message: "Failed to send OTP. Please try again."
       }
     } catch (error) {
       console.error("Error sending admin OTP:", error)
       return {
         success: false,
-        message: "Failed to send OTP"
+        message: "Failed to send OTP. Please try again."
       }
     }
   }
 
-  static isAdminContact(identifier: string): boolean {
-    return (
-      ADMIN_CONTACTS.phones.includes(identifier) ||
-      identifier.toLowerCase() === ADMIN_CONTACTS.email.toLowerCase()
-    )
+  static isAuthorizedAdminEmail(email: string): boolean {
+    return email.toLowerCase() === ADMIN_EMAIL.toLowerCase()
   }
 
-  static getAdminContacts() {
-    return ADMIN_CONTACTS
+  static getAdminEmail(): string {
+    return ADMIN_EMAIL
   }
 }

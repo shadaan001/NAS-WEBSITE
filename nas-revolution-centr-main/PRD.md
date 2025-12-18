@@ -114,8 +114,24 @@ A modern, clean, premium school management system with separate portals for stud
 - **Functionality**: Comprehensive management system for coaching center administration including student records, teacher management, attendance monitoring, class/subject organization, test management, fee tracking, and administrative settings
 - **Purpose**: Provide centralized control and oversight of all coaching center operations with analytics and reporting
 - **Trigger**: User clicks "Admin Portal" on home page
-- **Progression**: Home → admin login → dashboard with stats/charts → manage students/teachers/attendance/classes/tests/fees → view analytics → manage profile → logout
-- **Success criteria**: Secure authentication, complete CRUD operations on all entities, real-time statistics, comprehensive filtering and reporting, data persistence using useKV, smooth glassmorphic UI with animations
+- **Progression**: Home → admin login (Email OTP only to nasrevolutioncentre@gmail.com) → verify 6-digit OTP → dashboard with stats/charts → manage students/teachers/attendance/classes/tests/fees → view analytics → manage profile → logout
+- **Success criteria**: Secure email-only OTP authentication (single authorized email), complete CRUD operations on all entities, real-time statistics, comprehensive filtering and reporting, data persistence using useKV, smooth glassmorphic UI with animations
+
+### Admin Authentication (Email OTP Only)
+- **Functionality**: Secure admin login using email-based OTP verification restricted to a single authorized email address (nasrevolutioncentre@gmail.com)
+- **Purpose**: Ensure only the authorized admin can access the admin portal with secure, passwordless authentication
+- **Trigger**: User clicks "Admin Portal" on home page
+- **Progression**: Admin login page loads → displays locked email input (pre-filled, read-only) → user clicks "Send OTP to Admin Email" → OTP generated and stored → OTP verification screen → user enters 6-digit code → verification succeeds → session created → redirected to admin dashboard
+- **Success criteria**: 
+  - Only nasrevolutioncentre@gmail.com can receive OTP
+  - Any unauthorized email shows "Unauthorized email. Admin access only."
+  - OTP sending failure shows "Failed to send OTP. Please try again."
+  - Invalid OTP shows "Invalid OTP. Access denied."
+  - Maximum 3 OTP attempts before requiring new OTP
+  - 5-minute OTP expiry with countdown timer
+  - Session stored securely with email verification
+  - No phone/SMS OTP support - email only
+  - Dark futuristic theme with glassmorphism and neon blue/purple accents preserved
 
 ### Admin Dashboard
 - **Functionality**: Overview of key metrics with animated cards showing total students, teachers, subjects, fee collection status, upcoming tests, and attendance trends with interactive charts
