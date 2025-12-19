@@ -40,7 +40,7 @@ import LecturesPage from "./pages/Student/LecturesPage"
 import IslamicVideosPage from "./pages/IslamicVideosPage"
 import CredentialsPage from "./pages/CredentialsPage"
 import TeachersInfoPage from "./pages/TeachersInfoPage"
-import { AuthHelper } from "./lib/useAuth"
+import { AuthHelper } from "./lib/useAuthold"
 import TeacherBottomNav from "./components/TeacherBottomNav"
 import { seedDemoCredentials, ensureTeacherData, seedDemoCourses } from "./utils/seedDemoData"
 

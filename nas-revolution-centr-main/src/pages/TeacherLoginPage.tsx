@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { CredentialsService } from "@/services/credentials"
-import { AuthHelper } from "@/lib/useAuth"
+import { AuthHelper } from "@/lib/useAuthold"
 
 interface TeacherLoginPageProps {
   onLogin: (teacherId: string) => void

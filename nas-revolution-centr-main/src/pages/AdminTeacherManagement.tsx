@@ -27,7 +27,7 @@ import TeacherCard from "@/components/TeacherCard"
 import TeacherForm from "@/components/TeacherForm"
 import TeacherAssignModal from "@/components/TeacherAssignModal"
 import CredentialModal from "@/components/CredentialModal"
-import { AuthHelper } from "@/lib/useAuth"
+import { AuthHelper } from "@/lib/useAuthold"
 
 const subjects = ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Hindi", "Social Studies", "Computer Science", "Economics", "Accountancy", "Physical Education", "Fine Arts", "Music", "History", "Political Science", "Geography", "Environmental Science", "Business Studies"]
 

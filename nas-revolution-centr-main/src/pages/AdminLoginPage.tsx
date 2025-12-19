@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import GradientBackground from "@/components/school/GradientBackground"
 import { OTPService } from "@/services/otp"
-import { AuthHelper } from "@/lib/useAuth"
+import { AuthHelper } from "@/lib/useAuthold"
 
 interface AdminLoginPageProps {
   onLogin: (adminId: string) => void
