@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label"
 import { BookOpen, ArrowLeft, Eye, EyeSlash } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { CredentialsService } from "@/services/credentials"
-import { AuthHelper } from "@/lib/useAuthold"
+import { AuthHelper } from "@/lib/useAuth"
 
 interface LoginPageProps {
   onLogin: () => void
