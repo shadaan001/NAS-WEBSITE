@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DialogFooter } from "@/components/ui/dialog"
 import { toast } from "sonner"
+import { supabase } from "@/lib/supabase"
 import type { TeacherRecord, WeeklyAvailability } from "@/types/admin"
 
 const subjects = ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Hindi", "Social Studies", "Computer Science", "Economics", "Accountancy", "Physical Education", "Fine Arts", "Music", "History", "Political Science", "Geography", "Environmental Science", "Business Studies"]
@@ -145,7 +146,7 @@ export default function TeacherForm({ initialData, onSubmit, onCancel }: Teacher
     }))
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.name || !formData.email) {
       toast.error("Name and email are required")
       return
@@ -155,8 +156,52 @@ export default function TeacherForm({ initialData, onSubmit, onCancel }: Teacher
       toast.error("At least one subject is required")
       return
     }
+    console.log("Submitting form data:", formData)
+    try {
+      const teacherData = {
+        name: formData.name,
+        email: formData.email,
+        contact_number: formData.contactNumber || null,
+        address: formData.address || null,
+        qualification: formData.qualification || null,
+        experience: formData.experience || null,
+        subjects: formData.subjects || [],
+        classes_assigned: formData.classesAssigned || [],
+        availability: formData.availability || [],
+        photo_base64: formData.photoBase64 || null,
+      }
 
-    onSubmit(formData)
+      let result
+      if (initialData?.id) {
+        // Update existing teacher
+        const { data, error } = await supabase
+          .from('teachers')
+          .update(teacherData)
+          .eq('id', initialData.id)
+          .select()
+        result = { data, error }
+      } else {
+        // Insert new teacher
+        const { data, error } = await supabase
+          .from('teachers')
+          .insert([teacherData])
+          .select()
+        result = { data, error }
+      }
+
+      if (result.error) {
+        console.error('Supabase error:', result.error)
+        toast.error(`Failed to ${initialData?.id ? 'update' : 'add'} teacher: ${result.error.message}`)
+        return
+      }
+
+      toast.success(`Teacher ${initialData?.id ? 'updated' : 'added'} successfully!`)
+      console.log("Saved data:", result.data)
+      onSubmit(formData)
+    } catch (error) {
+      console.error('Error saving teacher:', error)
+      toast.error('An unexpected error occurred')
+    }
   }
 
   return (

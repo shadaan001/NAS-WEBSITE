@@ -28,6 +28,7 @@ import TeacherForm from "@/components/TeacherForm"
 import TeacherAssignModal from "@/components/TeacherAssignModal"
 import CredentialModal from "@/components/CredentialModal"
 import { AuthHelper } from "@/lib/useAuth"
+import { supabase } from "@/lib/supabase"
 
 const subjects = ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Hindi", "Social Studies", "Computer Science", "Economics", "Accountancy", "Physical Education", "Fine Arts", "Music", "History", "Political Science", "Geography", "Environmental Science", "Business Studies"]
 
@@ -55,10 +56,16 @@ export default function AdminTeacherManagement({ onBack }: AdminTeacherManagemen
   const [isCredentialModalOpen, setIsCredentialModalOpen] = useState(false)
 
   useEffect(() => {
-    if (!teachers || teachers.length === 0) {
-      setTeachers(() => seedTeachers)
+    const fetchTeachers = async () => {
+      if (!teachers || teachers.length === 0) {
+        const { data: teachersData, error } = await supabase
+          .from('teachers')
+          .select('*')
+        setTeachers(teachersData || [])
+      }
     }
-  }, [])
+    fetchTeachers()
+  }, [teachers, setTeachers])
 
   const teachersList = teachers || []
   const studentsList = students || []

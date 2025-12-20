@@ -6,7 +6,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { marked } from "marked"
+import { GoogleGenerativeAI } from "@google/generative-ai"
 import "./NASChatMarkdown.css"
+
+// Initialize Gemini API (Free tier)
+const genAI = new GoogleGenerativeAI("AIzaSyAD3u6oYnqfcFb8LbQjyjsuZ43JWltl9bY")
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
 
 interface NASChatBoxProps {
   isOpen: boolean
@@ -146,7 +151,8 @@ export default function NASChatBox({ isOpen, onClose }: NASChatBoxProps) {
       const systemPrompt = "You are NAS Tutor — a friendly, step-by-step education assistant. Answer in simple English/Hinglish. Give short direct answer first, then 3–5 steps explanation. Keep answers exam-oriented and helpful for students."
       const fullPrompt = `${systemPrompt}\n\nStudent Question: ${currentQuestion}`
 
-      const response = await spark.llm(fullPrompt, "gpt-4o-mini")
+      const result = await model.generateContent(fullPrompt)
+      const response = result.response.text()
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -156,7 +162,6 @@ export default function NASChatBox({ isOpen, onClose }: NASChatBoxProps) {
       }
 
       setMessages((prev) => [...prev, assistantMessage])
-      toast.success("Answer received!")
     } catch (error) {
       console.error("Error calling NAS API:", error)
       toast.error("Failed to get answer. Please try again.")
@@ -224,7 +229,8 @@ Make it conversational and easy to understand for students. Structure it as:
 
 Keep sentences short and natural for speech. Use simple language that students can easily understand.`
 
-      const explanationText = await spark.llm(explanationPromptText, "gpt-4o-mini")
+      const result = await model.generateContent(explanationPromptText)
+      const explanationText = result.response.text()
       
       setAudioExplanationText(explanationText)
 
@@ -458,7 +464,8 @@ Make it genuinely supportive, warm, and empathetic. The tone should be calm, fri
 
 Use natural spacing with double line breaks between sections for better readability.`
 
-      const motivationResponse = await spark.llm(promptText, "gpt-4o-mini")
+      const result = await model.generateContent(promptText)
+      const motivationResponse = result.response.text()
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
