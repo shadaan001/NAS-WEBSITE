@@ -7,11 +7,16 @@ import { CreditCard, ArrowLeft, Copy, Link as LinkIcon, CheckCircle, Sparkle } f
 import { toast } from "sonner"
 import GradientBackground from "@/components/school/GradientBackground"
 import { NotificationService } from "@/services/notification"
+import axios from "axios"
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4d25hbHByc3d0eW5neHBzYmV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNTUyMTMsImV4cCI6MjA4MTczMTIxM30.cBblq6oVFM63n_jljw6xw1RU0SHudrT96h8jiumqdi8"
 
 export default function PublicPaymentsPage() {
   const [studentId, setStudentId] = useState("")
   const [amount, setAmount] = useState("")
   const [name, setName] = useState("")
+  const [rollNumber, setRollNumber] = useState("")
+  const [email, setEmail] = useState("")
+  const [transactionId, setTransactionId] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [linkRequested, setLinkRequested] = useState(false)
   const upiId = "9073040640@ybl"
@@ -57,7 +62,7 @@ export default function PublicPaymentsPage() {
 
   const handleSubmitPayment = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!studentId && !name) {
       toast.error("Please enter either student ID or name")
       return
@@ -68,31 +73,41 @@ export default function PublicPaymentsPage() {
       return
     }
 
+    if (!email || !transactionId) {
+      toast.error("Please enter email and transaction ID")
+      return
+    }
+
     setIsProcessing(true)
 
-    const notificationSent = await NotificationService.sendPaymentNotification({
-      studentName: name,
-      studentId: studentId || undefined,
-      amount: parseFloat(amount)
-    })
+    try {
+      await axios.post("https://uxwnalprswtyngxpsbez.supabase.co/functions/v1/resend-email", {
+        to: email,
+        subject: `Payment Confirmation for ${name}`,
+        text: `Dear ${name},\n\nThank you for your payment.\n\nDetails:\nName: ${name}\nRoll Number: ${rollNumber}\nEmail: ${email}\nAmount: ₹${amount}\nTransaction ID: ${transactionId}\n\nWe will verify your payment and notify you shortly.\n\nBest regards,\nNAS Revolution Centre`,
+      }, {
+        headers: {
+          Authorization: `Bearer ${supabaseAnonKey}`,
+          "Content-Type": "application/json",
+        },
+      })
 
-    setTimeout(() => {
-      if (notificationSent) {
-        toast.success("Payment Submitted Successfully!", {
-          description: `₹${amount} payment for ${name || studentId} has been submitted. Admin will verify shortly and you'll be notified.`,
-          duration: 6000,
-        })
-      } else {
-        toast.success("Payment Submitted!", {
-          description: `₹${amount} payment for ${name || studentId} is being processed. Admin will verify shortly.`,
-          duration: 5000,
-        })
-      }
+      toast.success("Payment Submitted Successfully!", {
+        description: `₹${amount} payment for ${name || studentId} has been submitted. Admin will verify shortly and you'll be notified.`,
+        duration: 6000,
+      })
+
       setStudentId("")
       setAmount("")
       setName("")
+      setRollNumber("")
+      setEmail("")
+      setTransactionId("")
+    } catch (error) {
+      toast.error("Failed to send confirmation email. Please try again later.")
+    } finally {
       setIsProcessing(false)
-    }, 1500)
+    }
   }
 
   return (
@@ -144,14 +159,41 @@ export default function PublicPaymentsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="student-id-payment" className="text-sm font-semibold text-white">Student ID <span className="text-gray-400 font-normal">(Optional)</span></Label>
+                    <Label htmlFor="roll-number" className="text-sm font-semibold text-white">Roll Number *</Label>
                     <Input
-                      id="student-id-payment"
+                      id="roll-number"
                       type="text"
-                      placeholder="Enter student ID if enrolled"
-                      value={studentId}
-                      onChange={(e) => setStudentId(e.target.value)}
+                      placeholder="Enter roll number"
+                      value={rollNumber}
+                      onChange={(e) => setRollNumber(e.target.value)}
                       className="h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-400 focus:ring-blue-400/20"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-semibold text-white">Email *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-400 focus:ring-blue-400/20"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="transaction-id" className="text-sm font-semibold text-white">Transaction ID *</Label>
+                    <Input
+                      id="transaction-id"
+                      type="text"
+                      placeholder="Enter transaction ID"
+                      value={transactionId}
+                      onChange={(e) => setTransactionId(e.target.value)}
+                      className="h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-400 focus:ring-blue-400/20"
+                      required
                     />
                   </div>
 
