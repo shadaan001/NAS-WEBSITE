@@ -22,6 +22,8 @@ import { Progress } from "@/components/ui/progress"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts"
 import type { StudentRecord, TeacherRecord, FeeRecord, TestRecord } from "@/types/admin"
 import type { AttendanceRecord } from "@/types"
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 
 interface AdminDashboardPageProps {
   adminId: string
@@ -50,6 +52,38 @@ export default function AdminDashboardPage({ adminId, onNavigate, onGoHome }: Ad
   const [fees] = useKV<FeeRecord[]>("admin-fee-records", [])
   const [tests] = useKV<TestRecord[]>("admin-test-records", [])
   const [attendance] = useKV<AttendanceRecord[]>("admin-attendance-records", [])
+
+  const [studentCount, setStudentCount] = useState(0);
+  const [teacherCount, setTeacherCount] = useState(0);
+  const [testCount, setTestCount] = useState(0);
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const { data: students, error: studentError } = await supabase
+          .from('Students')
+          .select('*');
+        if (studentError) throw studentError;
+        setStudentCount(students.length);
+
+        const { data: teachers, error: teacherError } = await supabase
+          .from('teachers')
+          .select('*');
+        if (teacherError) throw teacherError;
+        setTeacherCount(teachers.length);
+
+        const { data: tests, error: testError } = await supabase
+          .from('Tests')
+          .select('*');
+        if (testError) throw testError;
+        setTestCount(tests.length);
+      } catch (error) {
+        console.error('Error fetching counts:', error);
+      }
+    };
+
+    fetchCounts();
+  }, []);
 
   const totalStudents = students?.length || 0
   const totalTeachers = teachers?.length || 0
@@ -133,7 +167,7 @@ export default function AdminDashboardPage({ adminId, onNavigate, onGoHome }: Ad
               </BubbleIcon>
               <div className="flex-1">
                 <p className="text-xs text-muted-foreground">Total Students</p>
-                <p className="text-2xl font-bold text-heading text-foreground mt-1">{totalStudents}</p>
+                <p className="text-2xl font-bold text-heading text-foreground mt-1">{studentCount}</p>
                 <div className="flex items-center gap-1 mt-2">
                   <TrendUp size={12} className="text-secondary" weight="bold" />
                   <span className="text-xs text-secondary font-semibold">Active</span>
@@ -154,7 +188,7 @@ export default function AdminDashboardPage({ adminId, onNavigate, onGoHome }: Ad
               </BubbleIcon>
               <div className="flex-1">
                 <p className="text-xs text-muted-foreground">Total Teachers</p>
-                <p className="text-2xl font-bold text-heading text-foreground mt-1">{totalTeachers}</p>
+                <p className="text-2xl font-bold text-heading text-foreground mt-1">{teacherCount}</p>
                 <div className="flex items-center gap-1 mt-2">
                   <TrendUp size={12} className="text-secondary" weight="bold" />
                   <span className="text-xs text-secondary font-semibold">Active</span>
@@ -298,6 +332,27 @@ export default function AdminDashboardPage({ adminId, onNavigate, onGoHome }: Ad
                 <p className="text-2xl font-bold text-heading text-foreground mt-1">📋</p>
                 <div className="flex items-center gap-1 mt-2">
                   <span className="text-xs text-muted-foreground font-medium">Manage info</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={item}>
+          <Card 
+            className="p-4 rounded-2xl card-shadow cursor-pointer hover:scale-[1.02] transition-transform"
+            onClick={() => onNavigate("tests")}
+          >
+            <div className="flex items-start gap-3">
+              <BubbleIcon size="sm" variant="green">
+                <ClipboardText size={20} weight="fill" />
+              </BubbleIcon>
+              <div className="flex-1">
+                <p className="text-xs text-muted-foreground">Total Tests</p>
+                <p className="text-2xl font-bold text-heading text-foreground mt-1">{tests?.length || 0}</p>
+                <div className="flex items-center gap-1 mt-2">
+                  <TrendUp size={12} className="text-secondary" weight="bold" />
+                  <span className="text-xs text-secondary font-semibold">Scheduled</span>
                 </div>
               </div>
             </div>
