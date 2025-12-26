@@ -27,7 +27,7 @@ import { supabase } from '../lib/supabase';
 
 interface AdminDashboardPageProps {
   adminId: string
-  onNavigate: (page: "dashboard" | "students" | "teachers" | "attendance" | "reports" | "classes" | "tests" | "fees" | "profile" | "manage-lectures" | "manage-islamic-videos" | "credentials" | "add-teacher-info" | "view-all-teachers") => void
+  onNavigate: (page: "dashboard" | "students" | "teachers" | "attendance" | "reports" | "classes" | "admin-courses" | "tests" | "fees" | "profile" | "manage-lectures" | "manage-islamic-videos" | "credentials" | "add-teacher-info" | "view-all-teachers") => void
   onGoHome?: () => void
 }
 
@@ -87,7 +87,7 @@ export default function AdminDashboardPage({ adminId, onNavigate, onGoHome }: Ad
 
   const totalStudents = students?.length || 0
   const totalTeachers = teachers?.length || 0
-  const totalSubjects = new Set(teachers?.flatMap(t => t.subjects) || []).size
+  const totalCourses = new Set(teachers?.flatMap(t => t.subjects) || []).size
   
   const paidFees = fees?.filter(f => f.status === "paid").length || 0
   const unpaidFees = fees?.filter(f => f.status === "unpaid" || f.status === "overdue").length || 0
@@ -201,15 +201,15 @@ export default function AdminDashboardPage({ adminId, onNavigate, onGoHome }: Ad
         <motion.div variants={item}>
           <Card 
             className="p-4 rounded-2xl card-shadow cursor-pointer hover:scale-[1.02] transition-transform"
-            onClick={() => onNavigate("classes")}
+            onClick={() => onNavigate("admin-courses")}
           >
             <div className="flex items-start gap-3">
               <BubbleIcon size="sm" variant="orange">
                 <BookOpen size={20} weight="fill" />
               </BubbleIcon>
               <div className="flex-1">
-                <p className="text-xs text-muted-foreground">Subjects</p>
-                <p className="text-2xl font-bold text-heading text-foreground mt-1">{totalSubjects}</p>
+                <p className="text-xs text-muted-foreground">Courses</p>
+                <p className="text-2xl font-bold text-heading text-foreground mt-1">{totalCourses}</p>
                 <div className="flex items-center gap-1 mt-2">
                   <span className="text-xs text-muted-foreground font-medium">Active courses</span>
                 </div>

@@ -21,6 +21,7 @@ import TeacherReports from "./pages/Teacher/Reports"
 import UploadLecturePage from "./pages/Teacher/UploadLecturePage"
 import AdminLoginPage from "./pages/AdminLoginPage"
 import AdminDashboardPage from "./pages/AdminDashboardPage"
+import AdminCoursesPage from "./pages/AdminCoursesPage"
 import AdminStudentManagement from "./pages/AdminStudentManagement"
 import AdminTeacherManagement from "./pages/AdminTeacherManagement"
 import AdminAttendanceOverview from "./pages/AdminAttendanceOverview"
@@ -63,6 +64,7 @@ type Page =
   | "teacher-upload-lectures"
   | "admin-login"
   | "admin-dashboard"
+  | "admin-courses"
   | "admin-students"
   | "admin-teachers"
   | "admin-attendance"
@@ -256,7 +258,7 @@ export default function App() {
     return (
       <>
         {currentAdminTab === "dashboard" && (
-          <AdminDashboardPage 
+            <AdminDashboardPage 
             adminId={userId}
             onNavigate={(page) => {
               if (page === "students") handleAdminTabChange("students")
@@ -270,6 +272,7 @@ export default function App() {
               else if (page === "credentials") handleAdminTabChange("credentials")
               else if (page === "add-teacher-info") handleAdminTabChange("add-teacher-info")
               else if (page === "view-all-teachers") handleAdminTabChange("view-all-teachers")
+              else if (page === "admin-courses") handleNavigateToPage("admin-courses")
               else handleAdminTabChange("dashboard")
             }}
             onGoHome={() => handleNavigateToPage("home")}
@@ -396,7 +399,9 @@ export default function App() {
 
             {currentPage === "admin-dashboard" && renderAdminDashboard()}
 
-            {currentPage === "courses" && <CoursesPage />}
+            {currentPage === "courses" && <CoursesPage onGoToContact={() => handleNavigateToPage("contact")} onBack={() => handleNavigateToPage("home")} />}
+
+            {currentPage === "admin-courses" && <AdminCoursesPage onBack={() => handleNavigateToPage("admin-dashboard")} onContact={() => handleNavigateToPage("contact")} />}
 
             {currentPage === "contact" && <ContactPage />}
 
