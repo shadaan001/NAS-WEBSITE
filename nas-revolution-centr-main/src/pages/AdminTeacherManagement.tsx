@@ -55,35 +55,66 @@ export default function AdminTeacherManagement({ onBack }: AdminTeacherManagemen
   const [credentialTeacher, setCredentialTeacher] = useState<TeacherRecord | null>(null)
   const [isCredentialModalOpen, setIsCredentialModalOpen] = useState(false)
 
+  const normalizeDbTeacherRow = (row: any): TeacherRecord => ({
+    id: row?.id,
+    name: row?.name,
+    email: row?.email,
+    contactNumber: row?.contact_number ?? row?.contactNumber ?? null,
+    address: row?.address ?? null,
+    qualification: row?.qualification ?? null,
+    experience: row?.experience ?? null,
+    subjects: Array.isArray(row?.subjects) ? row.subjects : (row?.subjects ? [row.subjects] : []),
+    classesAssigned: row?.classes_assigned ?? row?.classesAssigned ?? [],
+    availability: Array.isArray(row?.availability) ? row.availability : [],
+    photoBase64: row?.photo_base64 ?? row?.photoBase64 ?? null,
+    employeeId: row?.employee_id ?? row?.employeeId ?? null,
+    joiningDate: row?.joining_date ?? row?.joiningDate ?? null,
+    approved: typeof row?.approved === 'boolean' ? row.approved : true,
+    assignedStudentIds: row?.assigned_student_ids ?? row?.assignedStudentIds ?? [],
+  })
+
   useEffect(() => {
+    console.log("Fetching teachers...")
     const fetchTeachers = async () => {
-      if (!teachers || teachers.length === 0) {
-        const { data: teachersData, error } = await supabase
-          .from('teachers')
-          .select('*')
-        setTeachers(teachersData || [])
+      const { data: teachersData, error } = await supabase
+        .from('teachers')
+        .select('*')
+
+      if (error) {
+        console.error('Failed to fetch teachers:', error)
+        return
       }
+
+      const normalized = (teachersData || []).map((r: any) => normalizeDbTeacherRow(r))
+      setTeachers(normalized)
     }
     fetchTeachers()
-  }, [teachers, setTeachers])
+  }, [setTeachers])
 
   const teachersList = teachers || []
   const studentsList = students || []
 
   const filteredTeachers = teachersList.filter(teacher => {
-    const matchesSearch = teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      teacher.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      teacher.subjects.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()))
-    
-    const matchesSubject = filterSubject === "all" || teacher.subjects.includes(filterSubject)
-    
-    const matchesDay = filterDay === "all" || teacher.availability?.some(a => a.day === filterDay)
-    
+    const q = searchQuery.toLowerCase()
+    const subjects = teacher.subjects || []
+    const availability = teacher.availability || []
+
+    const matchesSearch = (
+      (teacher.name || "").toLowerCase().includes(q) ||
+      (teacher.email || "").toLowerCase().includes(q) ||
+      subjects.some(s => (s || "").toLowerCase().includes(q))
+    )
+
+    const matchesSubject = filterSubject === "all" || subjects.includes(filterSubject)
+
+    const matchesDay = filterDay === "all" || availability.some(a => a.day === filterDay)
+
     return matchesSearch && matchesSubject && matchesDay
   })
 
-  const handleAddTeacher = (teacherData: Partial<TeacherRecord>) => {
-    if (!teacherData.name || !teacherData.email) {
+  const handleAddTeacher = (teacherData: Partial<TeacherRecord> | TeacherRecord) => {
+    // TeacherForm now returns the saved, normalized teacher record from DB.
+    if (!teacherData || !teacherData.name || !teacherData.email) {
       toast.error("Please fill required fields")
       return
     }
@@ -98,62 +129,82 @@ export default function AdminTeacherManagement({ onBack }: AdminTeacherManagemen
       return
     }
 
-    const newTeacher: TeacherRecord = {
-      id: `t-${String(teachersList.length + 1).padStart(3, '0')}`,
-      employeeId: `EMP${String(teachersList.length + 1).padStart(3, '0')}`,
-      joiningDate: new Date().toISOString().split('T')[0],
-      subjects: [],
-      classesAssigned: [],
-      availability: [],
-      assignedStudentIds: [],
-      approved: true,
-      ...teacherData,
-    } as TeacherRecord
-
-    setTeachers((current) => [...(current || []), newTeacher])
+    setTeachers((current) => [...(current || []), teacherData as TeacherRecord])
     setIsAddOpen(false)
     toast.success("Teacher added successfully")
   }
 
-  const handleUpdateTeacher = (teacherData: Partial<TeacherRecord>) => {
+  const handleUpdateTeacher = (teacherData: Partial<TeacherRecord> | TeacherRecord) => {
     if (!editingTeacher) return
 
     setTeachers((current) => 
-      (current || []).map(t => t.id === editingTeacher.id ? { ...t, ...teacherData } : t)
+      (current || []).map(t => t.id === editingTeacher.id ? { ...t, ...(teacherData as TeacherRecord) } : t)
     )
     setIsEditOpen(false)
     setEditingTeacher(null)
     toast.success("Teacher updated successfully")
   }
 
-  const handleDeleteTeacher = () => {
+  const handleDeleteTeacher = async () => {
     if (!deletingTeacher) return
 
-    setTeachers((current) => (current || []).filter(t => t.id !== deletingTeacher.id))
-    
-    setStudents((current) =>
-      (current || []).map(student => ({
-        ...student,
-        assignedTeacherIds: student.assignedTeacherIds?.filter(id => id !== deletingTeacher.id),
-        assignedTeachers: (student.assignedTeachers || []).filter(t => t.teacherId !== deletingTeacher.id)
-      }))
-    )
+    try {
+      const { error } = await supabase
+        .from('teachers')
+        .delete()
+        .eq('id', deletingTeacher.id)
 
-    setIsDeleteConfirmOpen(false)
-    setDeleteingTeacher(null)
-    toast.success("Teacher deleted and removed from all student assignments")
+      if (error) {
+        console.error('Supabase delete error:', error)
+        toast.error('Failed to delete teacher')
+        return
+      }
+
+      setTeachers((current) => (current || []).filter(t => t.id !== deletingTeacher.id))
+      
+      setStudents((current) =>
+        (current || []).map(student => ({
+          ...student,
+          assignedTeacherIds: student.assignedTeacherIds?.filter(id => id !== deletingTeacher.id),
+          assignedTeachers: (student.assignedTeachers || []).filter(t => t.teacherId !== deletingTeacher.id)
+        }))
+      )
+
+      setIsDeleteConfirmOpen(false)
+      setDeleteingTeacher(null)
+      toast.success("Teacher deleted and removed from all student assignments")
+    } catch (err) {
+      console.error('Error deleting teacher:', err)
+      toast.error('An unexpected error occurred while deleting')
+    }
   }
 
-  const handleToggleApproval = (teacher: TeacherRecord) => {
+  const handleToggleApproval = async (teacher: TeacherRecord) => {
     const newApprovalState = !teacher.approved
-    setTeachers((current) =>
-      (current || []).map(t => t.id === teacher.id ? { ...t, approved: newApprovalState } : t)
-    )
-    toast.success(
-      newApprovalState 
-        ? `${teacher.name} approved for login access` 
-        : `${teacher.name} login access revoked`
-    )
+    try {
+      const { error } = await supabase
+        .from('teachers')
+        .update({ is_active: newApprovalState })
+        .eq('id', teacher.id)
+
+      if (error) {
+        console.error('Supabase update approval error:', error)
+        toast.error('Failed to update approval')
+        return
+      }
+
+      setTeachers((current) =>
+        (current || []).map(t => t.id === teacher.id ? { ...t, approved: newApprovalState } : t)
+      )
+      toast.success(
+        newApprovalState 
+          ? `${teacher.name} approved for login access` 
+          : `${teacher.name} login access revoked`
+      )
+    } catch (err) {
+      console.error('Error toggling approval:', err)
+      toast.error('An unexpected error occurred')
+    }
   }
 
   const handleAssignStudents = (teacherId: string, studentIds: string[]) => {
@@ -164,9 +215,14 @@ export default function AdminTeacherManagement({ onBack }: AdminTeacherManagemen
     const newlyAssigned = studentIds.filter(id => !previouslyAssigned.includes(id))
     const removed = previouslyAssigned.filter(id => !studentIds.includes(id))
 
+    // Update DB and local state
     setTeachers((current) =>
       (current || []).map(t => t.id === teacherId ? { ...t, assignedStudentIds: studentIds } : t)
     )
+
+    supabase.from('teachers').update({ assigned_student_ids: studentIds }).eq('id', teacherId).then(({ error }) => {
+      if (error) console.error('Failed to update teacher assigned students:', error)
+    })
 
     setStudents((current) =>
       (current || []).map(student => {

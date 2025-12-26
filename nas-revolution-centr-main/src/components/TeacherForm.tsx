@@ -29,6 +29,23 @@ interface TeacherFormProps {
 }
 
 export default function TeacherForm({ initialData, onSubmit, onCancel }: TeacherFormProps) {
+  const normalizeDbTeacherRow = (row: any): Partial<TeacherRecord> => ({
+    id: row?.id,
+    name: row?.name,
+    email: row?.email,
+    contactNumber: row?.contact_number ?? row?.contactNumber ?? null,
+    address: row?.address ?? null,
+    qualification: row?.qualification ?? null,
+    experience: row?.experience ?? null,
+    subjects: Array.isArray(row?.subjects) ? row.subjects : (row?.subjects ? [row.subjects] : []),
+    classesAssigned: row?.classes_assigned ?? row?.classesAssigned ?? [],
+    availability: Array.isArray(row?.availability) ? row.availability : [],
+    photoBase64: row?.photo_base64 ?? row?.photoBase64 ?? null,
+    employeeId: row?.employee_id ?? row?.employeeId ?? null,
+    joiningDate: row?.joining_date ?? row?.joiningDate ?? null,
+    approved: typeof row?.approved === 'boolean' ? row.approved : true,
+    assignedStudentIds: row?.assigned_student_ids ?? row?.assignedStudentIds ?? [],
+  })
   const [formData, setFormData] = useState<Partial<TeacherRecord>>({
     name: "",
     email: "",
@@ -48,6 +65,7 @@ export default function TeacherForm({ initialData, onSubmit, onCancel }: Teacher
   const [availabilityFrom, setAvailabilityFrom] = useState("")
   const [availabilityTo, setAvailabilityTo] = useState("")
   const [photoPreview, setPhotoPreview] = useState<string | null>(initialData?.photoBase64 || null)
+  const [currentTab, setCurrentTab] = useState<"basic" | "subjects" | "availability">("basic")
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -196,8 +214,13 @@ export default function TeacherForm({ initialData, onSubmit, onCancel }: Teacher
       }
 
       toast.success(`Teacher ${initialData?.id ? 'updated' : 'added'} successfully!`)
-      console.log("Saved data:", result.data)
-      onSubmit(formData)
+      // Supabase returns an array of rows for insert/update with .select()
+      const savedRow = Array.isArray(result.data) ? result.data[0] : result.data
+      console.log("Saved data:", savedRow)
+
+      // Normalize DB keys to front-end shape and pass up the saved record so parent can update local state
+      const normalized = savedRow ? normalizeDbTeacherRow(savedRow) : formData
+      onSubmit(normalized)
     } catch (error) {
       console.error('Error saving teacher:', error)
       toast.error('An unexpected error occurred')
@@ -206,7 +229,7 @@ export default function TeacherForm({ initialData, onSubmit, onCancel }: Teacher
 
   return (
     <div className="space-y-4">
-      <Tabs defaultValue="basic" className="w-full">
+  <Tabs value={currentTab} onValueChange={(v: string) => setCurrentTab(v as "basic" | "subjects" | "availability")} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="basic">Basic Info</TabsTrigger>
           <TabsTrigger value="subjects">Subjects</TabsTrigger>
@@ -471,9 +494,24 @@ export default function TeacherForm({ initialData, onSubmit, onCancel }: Teacher
         <Button variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button onClick={handleSubmit}>
-          {initialData?.id ? "Save Changes" : "Add Teacher"}
-        </Button>
+
+        {/* If not on last tab, show Next button; on last tab show submit text/button only */}
+        {currentTab !== "availability" ? (
+          <Button
+            type="button"
+            onClick={() => {
+              if (currentTab === "basic") setCurrentTab("subjects")
+              else if (currentTab === "subjects") setCurrentTab("availability")
+            }}
+            className="ml-2"
+          >
+            Next
+          </Button>
+        ) : (
+          <Button onClick={handleSubmit}>
+            {initialData?.id ? "Save Changes" : "Add Teacher"}
+          </Button>
+        )}
       </DialogFooter>
     </div>
   )
