@@ -11,6 +11,7 @@ import { DialogFooter } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import type { TeacherRecord, WeeklyAvailability } from "@/types/admin"
+import CoursesComponentClass610 from "@/components/Courses_Component_Class6-10"
 
 const subjects = ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Hindi", "Social Studies", "Computer Science", "Economics", "Accountancy", "Physical Education", "Fine Arts", "Music", "History", "Political Science", "Geography", "Environmental Science", "Business Studies"]
 
@@ -351,57 +352,8 @@ export default function TeacherForm({ initialData, onSubmit, onCancel }: Teacher
 
         <TabsContent value="subjects" className="space-y-4 mt-4">
           <div className="space-y-2">
-            <Label>Add Subject *</Label>
-            <div className="flex gap-2">
-              <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select subject" />
-                </SelectTrigger>
-                <SelectContent>
-                  {subjects.filter(s => !formData.subjects?.includes(s)).map(subject => (
-                    <SelectItem key={subject} value={subject}>{subject}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                onClick={handleAddSubject}
-                disabled={!selectedSubject}
-                className="gap-2"
-              >
-                <Plus size={18} />
-                Add
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Assigned Subjects ({formData.subjects?.length || 0})</Label>
-            <div className="flex flex-wrap gap-2 min-h-[60px] p-3 border rounded-lg">
-              {formData.subjects && formData.subjects.length > 0 ? (
-                formData.subjects.map((subject) => (
-                  <motion.div
-                    key={subject}
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.8, opacity: 0 }}
-                  >
-                    <Badge variant="secondary" className="gap-2 pr-1">
-                      {subject}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSubject(subject)}
-                        className="hover:text-destructive ml-1 p-1 rounded-full hover:bg-destructive/10"
-                      >
-                        <X size={12} />
-                      </button>
-                    </Badge>
-                  </motion.div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">No subjects assigned yet</p>
-              )}
-            </div>
+            <Label>Courses</Label>
+            <CoursesComponentClass610 />
           </div>
         </TabsContent>
 

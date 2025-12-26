@@ -3,28 +3,18 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { MagnifyingGlass, ArrowsDownUp, X, Check, BookOpen, GraduationCap } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import CourseCard from '@/components/CourseCard'
 import { toast } from 'sonner'
 import { useKV } from '@github/spark/hooks'
+import { supabase } from '@/lib/supabase'
 
-const DEFAULT_COURSES = [
-  { id: 1, className: 'Class 1', price: 1000, desc: 'Math + English + EVS + Hindi + Drawing' },
-  { id: 2, className: 'Class 2', price: 1000, desc: 'Math + English + EVS + Hindi + Drawing' },
-  { id: 3, className: 'Class 3', price: 1000, desc: 'Math + Science + English + Hindi + Social Studies' },
-  { id: 4, className: 'Class 4', price: 1000, desc: 'Math + Science + English + Hindi + Social Studies' },
-  { id: 5, className: 'Class 5', price: 1000, desc: 'Math + Science + English + Hindi + Bengali + Social Studies' },
-  { id: 6, className: 'Class 6', price: 1200, desc: 'Math + Science + English + Hindi + Bengali + Social Studies + Computer' },
-  { id: 7, className: 'Class 7', price: 1200, desc: 'Math + Science + English + Hindi + Bengali + Social Studies + Computer' },
-  { id: 8, className: 'Class 8', price: 1200, desc: 'Math + Science + English + Hindi + Bengali + Social Studies + Computer' },
-  { id: 9, className: 'Class 9', price: 1600, desc: 'Math + Science + English + Hindi + Social Studies + Computer' },
-  { id: 10, className: 'Class 10', price: 1600, desc: 'Math + Science + English + Hindi + Social Studies + Computer' },
-  { id: 11, className: 'Class 11 (Math+Physics)', price: 1500, desc: 'Mathematics + Physics (Science stream)' },
-  { id: 12, className: 'Class 12 (Math+Physics)', price: 1500, desc: 'Mathematics + Physics (Science stream)' }
-]
+import CourseForm from '@/components/CourseForm'
 
-const CoursesComponentClass610 = () => {
-  const [courses, setCourses] = useKV('nas_courses_v1', DEFAULT_COURSES)
+const CoursesComponentClass610 = ({ admin = false, onContact } = {}) => {
+  // Start with empty list; fetch from Supabase on mount
+  const [courses, setCourses] = useState([])
   const [receipts, setReceipts] = useKV('nas_receipts_v1', [])
   const [filteredCourses, setFilteredCourses] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -32,12 +22,37 @@ const CoursesComponentClass610 = () => {
   const [enrollModalOpen, setEnrollModalOpen] = useState(false)
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState(null)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editingCourse, setEditingCourse] = useState(null)
   const [formData, setFormData] = useState({ name: '', phone: '' })
   const [formErrors, setFormErrors] = useState({ name: '', phone: '' })
 
   useEffect(() => {
     filterAndSortCourses()
   }, [courses, searchQuery, sortOrder])
+
+  // Fetch courses from Supabase and map to local shape if present
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+  const { data, error } = await supabase.from('courses').select('*').order('created_at', { ascending: false })
+        if (error) throw error
+        if (data && data.length > 0) {
+          const mapped = data.map(d => ({
+            id: d.id,
+            className: d.class_name || d.className,
+            grade: d.grade || '',
+            price: d.course_fee || d.price,
+            desc: (d.key_features && d.key_features.join(', ')) || (d.subjects && d.subjects.join(', ')) || d.desc || ''
+          }))
+          setCourses(mapped)
+        }
+      } catch (err) {
+        console.error('Failed to fetch courses from supabase', err)
+      }
+    }
+    fetch()
+  }, [])
 
   const filterAndSortCourses = () => {
     let result = [...courses]
@@ -74,6 +89,84 @@ const CoursesComponentClass610 = () => {
     setEnrollModalOpen(true)
     setFormData({ name: '', phone: '' })
     setFormErrors({ name: '', phone: '' })
+  }
+
+  // Admin: add course using supabase
+  const handleAdminAdd = async (payload) => {
+    try {
+      const { data, error } = await supabase.from('courses').insert([{
+        class_name: payload.class_name,
+        grade: payload.grade || payload.class_name,
+        course_fee: payload.course_fee,
+        subjects: payload.subjects,
+        key_features: payload.key_features,
+      }]).select()
+
+      if (error) {
+        console.error('Insert error', error)
+        toast.error('Failed to add course')
+        return
+      }
+
+      const saved = Array.isArray(data) ? data[0] : data
+      const mapped = {
+        id: saved.id,
+        className: saved.class_name,
+        grade: saved.grade || '',
+        price: saved.course_fee,
+        desc: (saved.key_features || []).join(', ')
+      }
+      setCourses(prev => [mapped, ...prev])
+      toast.success('Course added')
+    } catch (err) {
+      console.error(err)
+      toast.error('Unexpected error')
+    }
+  }
+
+  const handleAdminDelete = async (id) => {
+    if (!confirm('Delete this course?')) return
+    try {
+      const { error } = await supabase.from('courses').delete().eq('id', id)
+      if (error) {
+        console.error('Delete error', error)
+        toast.error('Failed to delete')
+        return
+      }
+      setCourses(prev => prev.filter(c => c.id !== id))
+      toast.success('Course deleted')
+    } catch (err) {
+      console.error(err)
+      toast.error('Unexpected error')
+    }
+  }
+
+  const handleAdminUpdate = async (payload) => {
+    try {
+      if (!payload?.id) return
+      const { data, error } = await supabase.from('courses').update({
+        class_name: payload.class_name,
+        grade: payload.grade,
+        course_fee: payload.course_fee,
+        subjects: payload.subjects,
+        key_features: payload.key_features,
+      }).eq('id', payload.id).select()
+
+      if (error) {
+        console.error('Update error', error)
+        toast.error('Failed to update course')
+        return
+      }
+
+      const saved = Array.isArray(data) ? data[0] : data
+  setCourses(prev => prev.map(c => c.id === saved.id ? { id: saved.id, className: saved.class_name, grade: saved.grade || '', price: saved.course_fee, desc: (saved.key_features || []).join(', ') } : c))
+      setEditModalOpen(false)
+      setEditingCourse(null)
+      toast.success('Course updated')
+    } catch (err) {
+      console.error(err)
+      toast.error('Unexpected error')
+    }
   }
 
   const handleDetailsClick = (course) => {
@@ -163,15 +256,30 @@ const CoursesComponentClass610 = () => {
               className="pl-12 bg-white/5 border-white/10 text-white placeholder:text-gray-400 focus:border-blue-400 focus:ring-blue-400/20 h-12 backdrop-blur-sm"
             />
           </div>
+            <Button
+              onClick={toggleSortOrder}
+              variant="outline"
+              className="bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white h-12 backdrop-blur-sm min-w-[160px]"
+            >
+              <ArrowsDownUp className="mr-2" size={20} />
+              {sortOrder === 'low-to-high' ? 'Low → High' : 'High → Low'}
+            </Button>
 
-          <Button
-            onClick={toggleSortOrder}
-            variant="outline"
-            className="bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white h-12 backdrop-blur-sm min-w-[160px]"
-          >
-            <ArrowsDownUp className="mr-2" size={20} />
-            {sortOrder === 'low-to-high' ? 'Low → High' : 'High → Low'}
-          </Button>
+            {/* Admin: quick Add Course button moved to top controls */}
+            {admin && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">Add Course</Button>
+                </DialogTrigger>
+                <DialogContent className="bg-[#1a1f3a] border-white/10 text-white">
+                  <DialogHeader>
+                    <DialogTitle>Add Course</DialogTitle>
+                    <DialogDescription>Add a new course (admin)</DialogDescription>
+                  </DialogHeader>
+                  <CourseForm onSubmit={(p) => handleAdminAdd(p)} onCancel={() => { /* will close via dialog trigger */ }} />
+                </DialogContent>
+              </Dialog>
+            )}
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
@@ -188,42 +296,87 @@ const CoursesComponentClass610 = () => {
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-300 opacity-0 group-hover:opacity-100" />
                 
-                <div className="relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 h-full flex flex-col shadow-2xl group-hover:border-blue-400/50 transition-all duration-300">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                      <GraduationCap size={28} weight="duotone" className="text-white" />
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-white">₹{course.price}</div>
-                      <div className="text-xs text-gray-400">per month</div>
-                    </div>
-                  </div>
-
-                  <h3 className="text-2xl font-bold text-white mb-2">{course.className}</h3>
-                  <p className="text-gray-300 text-sm mb-6 flex-1">{course.desc}</p>
-
-                  <div className="flex gap-3">
-                    <Button
-                      onClick={() => handleEnrollClick(course)}
-                      className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 h-11 font-semibold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all duration-300"
-                    >
-                      Enroll Now
-                    </Button>
-                    <Button
-                      onClick={() => handleDetailsClick(course)}
-                      variant="outline"
-                      className="bg-white/5 border-white/20 text-white hover:bg-white/10 hover:text-white h-11 backdrop-blur-sm"
-                    >
-                      <BookOpen size={20} />
-                    </Button>
-                  </div>
+                <div className="relative">
+                  {/* Map our internal course shape to the CourseCard's expected shape (snake_case) */}
+                  { /* Defensive mapping: some courses may already be in snake_case */ }
+                  <CourseCard
+                    course={{
+                      id: course.id,
+                      class_name: course.class_name || course.className || '',
+                      grade: course.grade || '',
+                      course_fee: course.course_fee ?? course.price ?? '',
+                      subjects: course.subjects || (course.desc ? course.desc.split(',').map(s => s.trim()) : []),
+                      key_features: course.key_features || (course.desc ? course.desc.split(',').map(s => s.trim()) : []),
+                      created_at: course.created_at || course.createdAt
+                    }}
+                    admin={admin}
+                    onRead={(id) => {
+                      // find the full course object (our internal shape) and open details
+                      const found = courses.find(c => c.id === id)
+                      if (found) handleDetailsClick(found)
+                    }}
+                    onEdit={(c) => {
+                      // c is in snake_case from CourseCard - set editingCourse in same shape CourseForm expects
+                      const initial = {
+                        id: c.id,
+                        class_name: c.class_name,
+                        grade: c.grade || '',
+                        course_fee: c.course_fee,
+                        subjects: c.subjects || [],
+                        key_features: c.key_features || []
+                      }
+                      setEditingCourse(initial)
+                      setEditModalOpen(true)
+                    }}
+                    onDelete={(id) => handleAdminDelete(id)}
+                    onEnroll={(id) => {
+                      const found = courses.find(c => c.id === id)
+                      if (found) handleEnrollClick(found)
+                    }}
+                    onContact={(id) => {
+                      if (onContact) onContact(id)
+                      else {
+                        const found = courses.find(c => c.id === id)
+                        if (found) window.alert('Contact handler not provided for ' + (found.className || found.class_name || 'course'))
+                      }
+                    }}
+                  />
                 </div>
               </motion.div>
             ))}
           </AnimatePresence>
         </div>
 
-        {filteredCourses.length === 0 && (
+        {/* If there are no courses at all, show friendly message */}
+        {!courses || courses.length === 0 ? (
+          <div className="max-w-4xl mx-auto mt-12 text-center">
+            <div className="inline-block px-6 py-8 bg-white/5 rounded-2xl border border-white/10">
+              <h3 className="text-2xl font-semibold text-white mb-2">No Courses added yet</h3>
+              <p className="text-gray-400">Courses will appear here once added by an administrator.</p>
+            </div>
+          </div>
+        ) : null}
+        {/* admin Manage Courses list removed - admin controls are available on each card and top Add button */}
+
+        {/* Edit dialog */}
+        {admin && (
+          <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+          <DialogContent className="bg-[#1a1f3a] border-white/10 text-white">
+            <DialogHeader>
+              <DialogTitle>Edit Course</DialogTitle>
+              <DialogDescription>Update course details</DialogDescription>
+            </DialogHeader>
+            <CourseForm
+              initial={editingCourse ? { id: editingCourse.id, class_name: editingCourse.class_name, grade: editingCourse.grade, course_fee: editingCourse.course_fee, subjects: editingCourse.subjects, key_features: editingCourse.key_features } : undefined}
+              onSubmit={(p) => handleAdminUpdate(p)}
+              onCancel={() => { setEditModalOpen(false); setEditingCourse(null) }}
+              submitLabel="Save Changes"
+            />
+          </DialogContent>
+          </Dialog>
+        )}
+
+  {courses && courses.length > 0 && filteredCourses.length === 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
