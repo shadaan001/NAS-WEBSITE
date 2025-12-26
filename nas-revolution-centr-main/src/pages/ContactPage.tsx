@@ -6,6 +6,8 @@ import { Envelope, Phone, MapPin, ArrowLeft } from "@phosphor-icons/react"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
 import { useState } from "react"
+import axios from "axios"
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4d25hbHByc3d0eW5neHBzYmV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNTUyMTMsImV4cCI6MjA4MTczMTIxM30.cBblq6oVFM63n_jljw6xw1RU0SHudrT96h8jiumqdi8"
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -15,12 +17,30 @@ export default function ContactPage() {
     message: ""
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    toast.success("Message sent successfully!", {
-      description: "We'll get back to you within 24 hours."
-    })
-    setFormData({ name: "", email: "", phone: "", message: "" })
+
+    try {
+      await axios.post("https://uxwnalprswtyngxpsbez.supabase.co/functions/v1/resend-email", {
+  to: "shadaan001@gmail.com",
+  subject: `New Contact Form Submission from ${formData.name}`,
+  text: `Name: ${formData.name}\nEmail: ${formData.email}\nPhone: ${formData.phone}\nMessage: ${formData.message}`, // Changed 'body' to 'text'
+}, {
+  headers: {
+    // Don't forget the Authorization header if your function isn't public!
+    "Authorization": `Bearer ${supabaseAnonKey}`, 
+    "Content-Type": "application/json"
+  }
+});
+
+      toast.success("Message sent successfully!", {
+        description: "We'll get back to you within 24 hours."
+      })
+
+      setFormData({ name: "", email: "", phone: "", message: "" })
+    } catch (error) {
+      toast.error("Failed to send message. Please try again later.")
+    }
   }
 
   const handleBackToHome = () => {
@@ -135,6 +155,14 @@ export default function ContactPage() {
                     (Inside Churi Gali) Raja Bazar<br />
                     Kolkata - 700009
                   </p>
+                  <a
+                    href="https://maps.app.goo.gl/v9HFNp4UkCzDa1bi9"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block mt-4 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+                  >
+                    View on Google Maps
+                  </a>
                 </div>
               </div>
             </div>
@@ -146,7 +174,8 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-lg mb-2 text-white">Call Us</h3>
-                  <p className="text-gray-300">+91 9073040650</p>
+                  <p className="text-gray-300">+91 9073040640</p>
+                  <p className="text-gray-300">+91 9903847541</p>
                   <p className="text-gray-400 text-sm mt-1">Mon-Sat: 9AM - 6PM</p>
                 </div>
               </div>
@@ -159,7 +188,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-lg mb-2 text-white">Email Us</h3>
-                  <p className="text-gray-300">info@nasrevolution.com</p>
+                  <p className="text-gray-300">nasrevolutioncentre@gmail.com</p>
                   <p className="text-gray-400 text-sm mt-1">We'll respond within 24 hours</p>
                 </div>
               </div>
