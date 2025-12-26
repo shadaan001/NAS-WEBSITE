@@ -6,17 +6,15 @@ import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import GradientBackground from "@/components/school/GradientBackground"
 import { AuthHelper } from "@/lib/useAuth"
+import { supabase } from "@/lib/supabase" // Ensure this is the correct path to your Supabase client
 
 interface AdminLoginPageProps {
   onLogin: (adminId: string) => void
   onBackToHome: () => void
 }
 
-const ADMIN_EMAIL = "nasrevolutioncentre@gmail.com"
-const ADMIN_PASSWORD = "AnUe123@#4567"
-
 export default function AdminLoginPage({ onLogin, onBackToHome }: AdminLoginPageProps) {
-  const [credential, setCredential] = useState(ADMIN_EMAIL)
+  const [credential, setCredential] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -24,28 +22,41 @@ export default function AdminLoginPage({ onLogin, onBackToHome }: AdminLoginPage
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (credential !== ADMIN_EMAIL) {
-      toast.error("Unauthorized admin email")
-      return
-    }
-
-    if (password !== ADMIN_PASSWORD) {
-      toast.error("Incorrect password")
-      return
-    }
-
     setIsLoading(true)
 
     try {
-      toast.success("Admin login successful")
-      AuthHelper.createSession("admin", "ADMIN001", {
-        verifiedContact: ADMIN_EMAIL,
-        loginTime: new Date().toISOString()
-      })
-      
-      setTimeout(() => {
-        onLogin("ADMIN001")
-      }, 500)
+      // Fetch admin data from Supabase
+      const { data: admins, error } = await supabase
+        .from("admins")
+        .select("*")
+        .eq("email", credential)
+
+      if (error) {
+        console.error("Error fetching admin data:", error)
+        toast.error("An error occurred while verifying credentials.")
+        return
+      }
+
+      if (admins && admins.length > 0) {
+        const admin = admins[0]
+
+        // Check if the password matches
+        if (admin.password === password) {
+          toast.success("Admin login successful")
+          AuthHelper.createSession("admin", admin.id, {
+            verifiedContact: admin.email,
+            loginTime: new Date().toISOString()
+          })
+
+          setTimeout(() => {
+            onLogin(admin.id)
+          }, 500)
+        } else {
+          toast.error("Wrong credentials. Please try again.")
+        }
+      } else {
+        toast.error("Wrong credentials. Please try again.")
+      }
     } catch (error) {
       console.error("Error during login:", error)
       toast.error("Login failed. Please try again.")
@@ -132,8 +143,9 @@ export default function AdminLoginPage({ onLogin, onBackToHome }: AdminLoginPage
                           type="email"
                           value={credential}
                           onChange={(e) => setCredential(e.target.value)}
-                          readOnly
-                          className="bg-transparent border-0 text-white text-sm font-semibold cursor-not-allowed focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
+                          placeholder="Enter admin email"
+                          className="bg-transparent border-0 text-white text-sm focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
+                          required
                         />
                       </div>
                     </div>
