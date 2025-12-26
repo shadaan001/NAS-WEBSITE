@@ -8,6 +8,8 @@ import { toast } from "sonner"
 import GradientBackground from "@/components/school/GradientBackground"
 import { NotificationService } from "@/services/notification"
 import axios from "axios"
+import qrCodeImage from "@/assets/images/shaddanQR.jpeg"
+
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4d25hbHByc3d0eW5neHBzYmV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNTUyMTMsImV4cCI6MjA4MTczMTIxM30.cBblq6oVFM63n_jljw6xw1RU0SHudrT96h8jiumqdi8"
 
 export default function PublicPaymentsPage() {
@@ -129,6 +131,11 @@ export default function PublicPaymentsPage() {
           <p className="text-lg text-gray-300 max-w-2xl mx-auto">
             Submit your tuition fees securely using UPI or request a payment link
           </p>
+        </div>
+
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
+          <p className="font-bold">Important Notice</p>
+          <p>Before paying the admission fee, please reach out to our offline counselors for guidance.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
@@ -264,8 +271,13 @@ export default function PublicPaymentsPage() {
                 <CardContent className="pt-6 space-y-4">
                   <div className="text-center space-y-2 pb-4">
                     <p className="text-sm text-gray-300">
-                      Copy our UPI ID and pay directly through:
+                      Scan the QR code below or copy our UPI ID to pay directly:
                     </p>
+                    <img
+                      src={qrCodeImage}
+                      alt="QR Code for Payment"
+                      className="mx-auto w-50 h-50 shadow-lg"
+                    />
                     <div className="flex flex-wrap gap-2 justify-center text-xs font-semibold">
                       <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">Google Pay</span>
                       <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">PhonePe</span>
@@ -293,47 +305,6 @@ export default function PublicPaymentsPage() {
                       Click "Copy" → Open any UPI app → Paste & Pay
                     </p>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-300" />
-              <Card className="relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden">
-                <CardHeader className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 border-b border-white/10">
-                  <CardTitle className="flex items-center gap-2 text-lg text-white">
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/30">
-                      <LinkIcon size={20} className="text-white" />
-                    </div>
-                    Request Payment Link
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-4">
-                  <p className="text-sm text-gray-300">
-                    We'll send you a secure UPI payment link via WhatsApp or SMS that you can click to pay instantly.
-                  </p>
-                  <Button
-                    onClick={handleRequestPaymentLink}
-                    disabled={!amount || !name || linkRequested}
-                    className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white border-0 font-semibold text-base shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-all duration-300"
-                  >
-                    {linkRequested ? (
-                      <>
-                        <CheckCircle className="mr-2" size={20} />
-                        Request Sent Successfully
-                      </>
-                    ) : (
-                      <>
-                        <LinkIcon className="mr-2" size={20} />
-                        Request Secure Payment Link
-                      </>
-                    )}
-                  </Button>
-                  {linkRequested && (
-                    <p className="text-xs text-center text-green-400 font-medium animate-fade-in">
-                      ✓ We'll contact you shortly with the payment link
-                    </p>
-                  )}
                 </CardContent>
               </Card>
             </div>
