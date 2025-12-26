@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { useKV } from "@github/spark/hooks"
 import { 
@@ -34,6 +34,9 @@ import type { StudentRecord, TeacherRecord } from "@/types/admin"
 import { Progress } from "@/components/ui/progress"
 import { calculateAttendanceSummary } from "@/data/attendanceData"
 import type { AttendanceRecord } from "@/types"
+import { v4 as uuidv4 } from "uuid";
+import { supabase } from "@/lib/supabase"
+
 
 const classes = ["Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "Class 11 Science", "Class 11 Commerce", "Class 12 Science", "Class 12 Commerce"]
 const subjects = ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Hindi", "Social Studies", "Computer Science"]
@@ -44,7 +47,7 @@ interface AdminStudentManagementProps {
 
 export default function AdminStudentManagement({ onBack }: AdminStudentManagementProps = {}) {
   const [students, setStudents] = useKV<StudentRecord[]>("admin-students-records", [])
-  const [teachers] = useKV<TeacherRecord[]>("admin-teachers-records", [])
+  const [teachers, setTeachers] = useKV<TeacherRecord[]>("admin-teachers-records", [])
   const [attendance] = useKV<AttendanceRecord[]>("admin-attendance-records", [])
   
   const [searchQuery, setSearchQuery] = useState("")
@@ -82,13 +85,43 @@ export default function AdminStudentManagement({ onBack }: AdminStudentManagemen
     student.rollNumber.includes(searchQuery)
   )
 
+  // Function to fetch all students from the database
+  const fetchStudents = async () => {
+    const { data: students, error } = await supabase.from("Students").select("*");
+    if (error) {
+      console.error("Error fetching students:", error);
+      toast.error("Failed to fetch students.");
+      return;
+    }
+    console.log("Fetched students:", students);
+    setStudents(students || []);
+  };
+
+  // Function to fetch all teachers from the database
+  const fetchTeachers = async () => {
+    const { data: teachers, error } = await supabase.from("teachers").select("*");
+    if (error) {
+      console.error("Error fetching teachers:", error);
+      toast.error("Failed to fetch teachers.");
+      return;
+    }
+    console.log("Fetched teachers:", teachers);
+    setTeachers(teachers || []);
+  };
+
+  // Call fetchStudents and fetchTeachers on component mount
+  useEffect(() => {
+    fetchStudents();
+    fetchTeachers();
+  }, []);
+
   const handleAdd = async () => {
     if (!formData.name || !formData.class || !formData.rollNumber) {
       toast.error("Please fill required fields")
       return
     }
 
-    const newStudentId = `STU${String(studentsList.length + 1).padStart(4, '0')}`
+     const newStudentId = uuidv4()
     
     const newStudent: StudentRecord = {
       id: newStudentId,
@@ -101,8 +134,23 @@ export default function AdminStudentManagement({ onBack }: AdminStudentManagemen
       hasCredentials: false
     }
 
-    setStudents((current) => [...(current || []), newStudent])
-    
+    console.log("Adding new student:", newStudent)
+
+    const { data, error } = await supabase
+      .from("Students")
+      .insert([newStudent])
+      .select()
+
+    if (error) {
+      console.error("Error adding student:", error)
+      toast.error("Failed to add student.")
+      return
+    }
+
+    console.log("Student added successfully:", data)
+    setStudents((current) => [...(current || []), ...(data || [])])
+    toast.success("Student added successfully.")
+
     const resetFormData = {
       name: "",
       class: "",
@@ -124,7 +172,6 @@ export default function AdminStudentManagement({ onBack }: AdminStudentManagemen
     
     setFormData(resetFormData)
     setIsAddOpen(false)
-    toast.success("Student added successfully")
   }
 
   const handleEdit = async () => {
@@ -137,8 +184,25 @@ export default function AdminStudentManagement({ onBack }: AdminStudentManagemen
       assignedTeacherIds: Array.isArray(editingStudent.assignedTeacherIds) ? editingStudent.assignedTeacherIds : []
     }
 
-    setStudents((current) => 
-      (current || []).map(s => s.id === editingStudent.id ? sanitizedStudent as StudentRecord : s)
+    console.log("Updating student:", sanitizedStudent)
+
+    const { data, error } = await supabase
+      .from("Students")
+      .update(sanitizedStudent)
+      .eq("id", editingStudent.id)
+      .select()
+
+    if (error) {
+      console.error("Error updating student:", error)
+      toast.error("Failed to update student.")
+      return
+    }
+
+    console.log("Student updated successfully:", data)
+    setStudents((current) =>
+      (current || []).map(student =>
+        student.id === editingStudent.id ? { ...student, ...sanitizedStudent } : student
+      )
     )
     setIsEditOpen(false)
     setEditingStudent(null)
@@ -149,8 +213,19 @@ export default function AdminStudentManagement({ onBack }: AdminStudentManagemen
     }
   }
 
-  const handleDelete = (id: string) => {
-    setStudents((current) => (current || []).filter(s => s.id !== id))
+  const handleDelete = async (id: string) => {
+    console.log("Deleting student with ID:", id)
+
+    const { error } = await supabase.from("Students").delete().eq("id", id)
+
+    if (error) {
+      console.error("Error deleting student:", error)
+      toast.error("Failed to delete student.")
+      return
+    }
+
+    console.log("Student deleted successfully with ID:", id)
+    setStudents((current) => (current || []).filter(student => student.id !== id))
     toast.success("Student deleted successfully")
   }
 
@@ -297,10 +372,9 @@ export default function AdminStudentManagement({ onBack }: AdminStudentManagemen
                 onRemoveSubject={handleRemoveSubject}
                 onAssignTeacher={handleAssignTeacher}
                 onRemoveTeacher={handleRemoveTeacher}
+                isEditMode={false}
               />
-              <DialogFooter>
-                <Button onClick={handleAdd} className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0">Add Student</Button>
-              </DialogFooter>
+
             </DialogContent>
           </Dialog>
       </motion.div>
@@ -457,6 +531,7 @@ export default function AdminStudentManagement({ onBack }: AdminStudentManagemen
               onRemoveSubject={handleRemoveSubject}
               onAssignTeacher={handleAssignTeacher}
               onRemoveTeacher={handleRemoveTeacher}
+              isEditMode={true}
             />
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsEditOpen(false)} className="bg-white/5 border-white/20 text-white hover:bg-white/10 hover:text-white">Cancel</Button>
@@ -492,15 +567,25 @@ interface StudentFormProps {
   onRemoveSubject: (subject: string) => void
   onAssignTeacher: (teacherId: string, subject: string) => void
   onRemoveTeacher: (teacherId: string, subject: string) => void
+  isEditMode?: boolean
 }
 
-function StudentForm({ data, onChange, teachers, onAddSubject, onRemoveSubject, onAssignTeacher, onRemoveTeacher }: StudentFormProps) {
-  const [selectedSubject, setSelectedSubject] = useState("")
-  const [selectedTeacher, setSelectedTeacher] = useState("")
-  const [teacherSubject, setTeacherSubject] = useState("")
+function StudentForm({ data, onChange, teachers, onAddSubject, onRemoveSubject, onAssignTeacher, onRemoveTeacher, isEditMode }: StudentFormProps) {
+  const [selectedSubject, setSelectedSubject] = useState("");
+  const [selectedTeacher, setSelectedTeacher] = useState("");
+  const [teacherSubject, setTeacherSubject] = useState("");
+  const [currentTab, setCurrentTab] = useState("basic"); // Track the current tab
+
+  const handleNext = () => {
+    if (currentTab === "basic") {
+      setCurrentTab("subjects");
+    } else if (currentTab === "subjects") {
+      setCurrentTab("teachers");
+    }
+  };
 
   return (
-    <Tabs defaultValue="basic" className="w-full">
+    <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
       <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="basic">Basic Info</TabsTrigger>
         <TabsTrigger value="subjects">Subjects</TabsTrigger>
@@ -641,7 +726,7 @@ function StudentForm({ data, onChange, teachers, onAddSubject, onRemoveSubject, 
               disabled={!selectedSubject}
               className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0"
             >
-              <Plus size={18} />
+              Add
             </Button>
           </div>
         </div>
@@ -707,7 +792,6 @@ function StudentForm({ data, onChange, teachers, onAddSubject, onRemoveSubject, 
             disabled={!selectedTeacher || !teacherSubject}
             className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0"
           >
-            <Plus size={18} className="mr-2" />
             Assign Teacher
           </Button>
         </div>
@@ -742,6 +826,26 @@ function StudentForm({ data, onChange, teachers, onAddSubject, onRemoveSubject, 
           </div>
         </div>
       </TabsContent>
+
+      <div className="flex justify-end mt-4">
+        {currentTab !== "teachers" ? (
+          <Button
+            onClick={handleNext}
+            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0"
+          >
+            Next
+          </Button>
+        ) : (
+          !isEditMode && (
+            <Button
+              onClick={() => console.log("Add Student")}
+              className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white border-0"
+            >
+              Add Student
+            </Button>
+          )
+        )}
+      </div>
     </Tabs>
   )
 }
