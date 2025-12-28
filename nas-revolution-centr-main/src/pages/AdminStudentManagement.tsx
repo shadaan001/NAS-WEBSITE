@@ -76,6 +76,27 @@ export default function AdminStudentManagement({ onBack }: AdminStudentManagemen
     hasCredentials: false
   })
 
+  const resetFormData = () => {
+    setFormData({
+      name: "",
+      class: "",
+      rollNumber: "",
+      email: "",
+      phone: "",
+      address: "",
+      guardianName: "",
+      guardianPhone: "",
+      dateOfBirth: "",
+      bloodGroup: "",
+      subjects: [],
+      assignedTeachers: [],
+      assignedTeacherIds: [],
+      username: "",
+      password: "",
+      hasCredentials: false
+    })
+  }
+
   const studentsList = students || []
   const teachersList = teachers || []
 
@@ -114,65 +135,6 @@ export default function AdminStudentManagement({ onBack }: AdminStudentManagemen
     fetchStudents();
     fetchTeachers();
   }, []);
-
-  const handleAdd = async () => {
-    if (!formData.name || !formData.class || !formData.rollNumber) {
-      toast.error("Please fill required fields")
-      return
-    }
-
-     const newStudentId = uuidv4()
-    
-    const newStudent: StudentRecord = {
-      id: newStudentId,
-      ...formData,
-      subjects: formData.subjects || [],
-      assignedTeachers: formData.assignedTeachers || [],
-      assignedTeacherIds: formData.assignedTeacherIds || [],
-      admissionDate: new Date().toISOString().split('T')[0],
-      username: formData.username || "",
-      hasCredentials: false
-    }
-
-    console.log("Adding new student:", newStudent)
-
-    const { data, error } = await supabase
-      .from("Students")
-      .insert([newStudent])
-      .select()
-
-    if (error) {
-      console.error("Error adding student:", error)
-      toast.error("Failed to add student.")
-      return
-    }
-
-    console.log("Student added successfully:", data)
-    setStudents((current) => [...(current || []), ...(data || [])])
-    toast.success("Student added successfully.")
-
-    const resetFormData = {
-      name: "",
-      class: "",
-      rollNumber: "",
-      email: "",
-      phone: "",
-      address: "",
-      guardianName: "",
-      guardianPhone: "",
-      dateOfBirth: "",
-      bloodGroup: "",
-      subjects: [],
-      assignedTeachers: [],
-      assignedTeacherIds: [],
-      username: "",
-      password: "",
-      hasCredentials: false
-    }
-    
-    setFormData(resetFormData)
-    setIsAddOpen(false)
-  }
 
   const handleEdit = async () => {
     if (!editingStudent) return
@@ -373,6 +335,11 @@ export default function AdminStudentManagement({ onBack }: AdminStudentManagemen
                 onAssignTeacher={handleAssignTeacher}
                 onRemoveTeacher={handleRemoveTeacher}
                 isEditMode={false}
+                setStudents={setStudents}
+                supabase={supabase}
+                toast={toast}
+                onClose={() => setIsAddOpen(false)}
+                resetForm={resetFormData}
               />
 
             </DialogContent>
@@ -568,9 +535,14 @@ interface StudentFormProps {
   onAssignTeacher: (teacherId: string, subject: string) => void
   onRemoveTeacher: (teacherId: string, subject: string) => void
   isEditMode?: boolean
+  setStudents?: (updater: (prev: StudentRecord[]) => StudentRecord[]) => void
+  supabase?: any
+  toast?: any
+  onClose?: () => void
+  resetForm?: () => void
 }
 
-function StudentForm({ data, onChange, teachers, onAddSubject, onRemoveSubject, onAssignTeacher, onRemoveTeacher, isEditMode }: StudentFormProps) {
+function StudentForm({ data, onChange, teachers, onAddSubject, onRemoveSubject, onAssignTeacher, onRemoveTeacher, isEditMode, setStudents, supabase, toast, onClose, resetForm }: StudentFormProps) {
   const [selectedSubject, setSelectedSubject] = useState("");
   const [selectedTeacher, setSelectedTeacher] = useState("");
   const [teacherSubject, setTeacherSubject] = useState("");
@@ -583,6 +555,55 @@ function StudentForm({ data, onChange, teachers, onAddSubject, onRemoveSubject, 
       setCurrentTab("teachers");
     }
   };
+
+  const handleAddStudent = async () => {
+    if (!data.name || !data.class || !data.rollNumber) {
+      toast?.error("Please fill required fields")
+      return
+    }
+
+     const newStudentId = uuidv4()
+    
+    const newStudent: StudentRecord = {
+      id: newStudentId,
+      name: data.name!,
+      class: data.class!,
+      rollNumber: data.rollNumber!,
+      phone: data.phone || "",
+      address: data.address || "",
+      email: data.email || "",
+      subjects: data.subjects || [],
+      assignedTeachers: data.assignedTeachers || [],
+      assignedTeacherIds: data.assignedTeacherIds || [],
+      admissionDate: new Date().toISOString().split('T')[0],
+      username: data.username || "",
+      hasCredentials: false,
+      dateOfBirth: data.dateOfBirth,
+      guardianName: data.guardianName,
+      guardianPhone: data.guardianPhone,
+      bloodGroup: data.bloodGroup
+    }
+
+    console.log("Adding new student:", newStudent)
+
+    const { data: insertedData, error } = await supabase
+      .from("Students")
+      .insert([newStudent])
+      .select()
+
+    if (error) {
+      console.error("Error adding student:", error)
+      toast?.error("Failed to add student.")
+      return
+    }
+
+    console.log("Student added successfully:", insertedData)
+    setStudents?.((current) => [...(current || []), ...(insertedData || [])])
+    toast?.success("Student added successfully.")
+
+    resetForm?.()
+    onClose?.()
+  }
 
   return (
     <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
@@ -838,7 +859,7 @@ function StudentForm({ data, onChange, teachers, onAddSubject, onRemoveSubject, 
         ) : (
           !isEditMode && (
             <Button
-              onClick={() => console.log("Add Student")}
+              onClick={handleAddStudent}
               className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white border-0"
             >
               Add Student

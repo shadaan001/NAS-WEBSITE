@@ -9,9 +9,8 @@ import GradientBackground from "@/components/school/GradientBackground"
 import { NotificationService } from "@/services/notification"
 import axios from "axios"
 import qrCodeImage from "@/assets/images/shaddanQR.jpeg"
-
+import { supabase } from "@/lib/supabase"
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4d25hbHByc3d0eW5neHBzYmV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNTUyMTMsImV4cCI6MjA4MTczMTIxM30.cBblq6oVFM63n_jljw6xw1RU0SHudrT96h8jiumqdi8"
-
 export default function PublicPaymentsPage() {
   const [studentId, setStudentId] = useState("")
   const [amount, setAmount] = useState("")
@@ -93,6 +92,18 @@ export default function PublicPaymentsPage() {
           "Content-Type": "application/json",
         },
       })
+
+      const { data, error } = await supabase
+        .from('Payments')
+        .insert([
+          { student_name: name, roll_number: rollNumber, email: email, amount: parseFloat(amount), transaction_id: transactionId }
+        ])
+        .select()
+
+      if (error) {
+        console.error('Error inserting payment:', error)
+        toast.error("Payment recorded but there was an issue saving to database. Please contact support.")
+      }
 
       toast.success("Payment Submitted Successfully!", {
         description: `₹${amount} payment for ${name || studentId} has been submitted. Admin will verify shortly and you'll be notified.`,
