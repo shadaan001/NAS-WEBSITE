@@ -10,9 +10,9 @@ import { toast } from 'sonner'
 import { useKV } from '@github/spark/hooks'
 import { supabase } from '@/lib/supabase'
 
-import { CourseForm } from '@/components/CourseForm'
+import CourseForm from '@/components/CourseForm'
 
-const CoursesComponentClass610 = ({ admin = false, onContact } = {}) => {
+const CoursesComponentClass610 = ({ admin = false, onContact, onGoToPayments } = {}) => {
   // Start with empty list; fetch from Supabase on mount
   const [courses, setCourses] = useState([])
   const [receipts, setReceipts] = useKV('nas_receipts_v1', [])
@@ -331,7 +331,13 @@ const CoursesComponentClass610 = ({ admin = false, onContact } = {}) => {
                     onDelete={(id) => handleAdminDelete(id)}
                     onEnroll={(id) => {
                       const found = courses.find(c => c.id === id)
-                      if (found) handleEnrollClick(found)
+                      if (onGoToPayments) {
+                        // navigate to public payments page (handled by parent)
+                        onGoToPayments()
+                      } else if (found) {
+                        // fallback to in-place payment modal
+                        handleEnrollClick(found)
+                      }
                     }}
                     onContact={(id) => {
                       if (onContact) onContact(id)

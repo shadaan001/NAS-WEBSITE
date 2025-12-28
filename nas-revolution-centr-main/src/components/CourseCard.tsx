@@ -2,6 +2,7 @@ import React from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Trash, BookOpen, PencilSimple, GraduationCap } from '@phosphor-icons/react'
+import NeonButton from './NeonButton'
 
 type Course = {
   id: number
@@ -88,9 +89,21 @@ export default function CourseCard({ course, onDelete, onEdit, onContact, onEnro
                 ) : <div />}
             </div>
         </div>
-        <Button className="w-full sm:flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white" onClick={() => onEnroll ? onEnroll(course.id) : null}>
-          Enroll Now
-        </Button>
+            <NeonButton
+              variant="primary"
+              size="md"
+              onClick={() => {
+                // dispatch a global navigation event that App can listen for
+                try {
+                  window.dispatchEvent(new CustomEvent('nas:navigate', { detail: { page: 'public-payments' } }))
+                } catch (e) {
+                  // fallback: navigate to payments route if present
+                  window.location.href = '/public-payments'
+                }
+              }}
+            >
+              Enroll Now
+            </NeonButton>
         <Button variant="outline" className="w-full sm:flex-1" onClick={() => onContact ? onContact(course.id) : window.alert('Contact handler not provided')}>
           Contact Us
         </Button>

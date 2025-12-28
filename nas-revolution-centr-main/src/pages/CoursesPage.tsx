@@ -2,7 +2,7 @@ import CoursesComponentClass610 from "@/components/Courses_Component_Class6-10"
 import GradientBackground from "@/components/school/GradientBackground"
 import { ArrowLeft } from "@phosphor-icons/react"
 
-export default function CoursesPage({ onGoToContact, onBack }: { onGoToContact?: () => void, onBack?: () => void }) {
+export default function CoursesPage({ onGoToContact, onBack, onGoToPayments }: { onGoToContact?: () => void, onBack?: () => void, onGoToPayments?: () => void }) {
   const handleBackToHome = () => {
     if (onBack) return onBack()
     window.history.back()
@@ -19,7 +19,7 @@ export default function CoursesPage({ onGoToContact, onBack }: { onGoToContact?:
         <span className="font-medium">Back to Home</span>
       </button>
 
-      <CoursesComponentClass610 onContact={onGoToContact} />
+  <CoursesComponentClass610 onContact={onGoToContact} onGoToPayments={onGoToPayments} />
     </div>
   )
 }

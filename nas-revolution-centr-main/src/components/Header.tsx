@@ -53,7 +53,19 @@ export default function Header() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <NeonButton variant="primary" size="md">
+            <NeonButton
+              variant="primary"
+              size="md"
+              onClick={() => {
+                // dispatch a global navigation event that App can listen for
+                try {
+                  window.dispatchEvent(new CustomEvent('nas:navigate', { detail: { page: 'public-payments' } }))
+                } catch (e) {
+                  // fallback: navigate to payments route if present
+                  window.location.href = '/public-payments'
+                }
+              }}
+            >
               Enroll Now
             </NeonButton>
           </motion.div>
@@ -92,7 +104,18 @@ export default function Header() {
                   {link.name}
                 </a>
               ))}
-              <NeonButton variant="primary" size="md" className="mt-4">
+              <NeonButton
+                variant="primary"
+                size="md"
+                className="mt-4"
+                onClick={() => {
+                  try {
+                    window.dispatchEvent(new CustomEvent('nas:navigate', { detail: { page: 'public-payments' } }))
+                  } catch (e) {
+                    window.location.href = '/public-payments'
+                  }
+                }}
+              >
                 Enroll Now
               </NeonButton>
             </nav>

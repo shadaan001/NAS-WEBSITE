@@ -134,6 +134,22 @@ export default function App() {
     initialize()
   }, [])
 
+  // Listen for global navigation events dispatched by header or other components
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      try {
+        const custom = ev as CustomEvent
+        const page = custom?.detail?.page
+        if (page) handleNavigateToPage(page as Page)
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    window.addEventListener('nas:navigate', handler as EventListener)
+    return () => window.removeEventListener('nas:navigate', handler as EventListener)
+  }, [])
+
   const handleNavigateToPage = (page: Page) => {
     setCurrentPage(page)
   }
@@ -399,7 +415,7 @@ export default function App() {
 
             {currentPage === "admin-dashboard" && renderAdminDashboard()}
 
-            {currentPage === "courses" && <CoursesPage onGoToContact={() => handleNavigateToPage("contact")} onBack={() => handleNavigateToPage("home")} />}
+            {currentPage === "courses" && <CoursesPage onGoToContact={() => handleNavigateToPage("contact")} onBack={() => handleNavigateToPage("home")} onGoToPayments={() => handleNavigateToPage("public-payments")} />}
 
             {currentPage === "admin-courses" && <AdminCoursesPage onBack={() => handleNavigateToPage("admin-dashboard")} onContact={() => handleNavigateToPage("contact")} />}
 
