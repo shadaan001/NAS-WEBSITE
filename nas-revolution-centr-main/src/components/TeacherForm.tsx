@@ -11,7 +11,6 @@ import { DialogFooter } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import type { TeacherRecord, WeeklyAvailability } from "@/types/admin"
-import CoursesComponentClass610 from "@/components/Courses_Component_Class6-10"
 
 const subjects = ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Hindi", "Social Studies", "Computer Science", "Economics", "Accountancy", "Physical Education", "Fine Arts", "Music", "History", "Political Science", "Geography", "Environmental Science", "Business Studies"]
 
@@ -352,8 +351,50 @@ export default function TeacherForm({ initialData, onSubmit, onCancel }: Teacher
 
         <TabsContent value="subjects" className="space-y-4 mt-4">
           <div className="space-y-2">
-            <Label>Courses</Label>
-            <CoursesComponentClass610 />
+            <Label>Subjects</Label>
+
+            <div className="flex items-center gap-2">
+              <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="Select a subject" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subjects.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Button
+                type="button"
+                onClick={handleAddSubject}
+                disabled={!selectedSubject}
+                className="gap-2"
+                title="Add subject"
+              >
+                <Plus size={16} />
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap gap-2 mt-3">
+              {(formData.subjects || []).length > 0 ? (
+                (formData.subjects || []).map((s) => (
+                  <Badge key={s} className="flex items-center gap-2">
+                    <span>{s}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSubject(s)}
+                      className="p-1 rounded-full hover:bg-destructive/10 hover:text-destructive"
+                      aria-label={`Remove ${s}`}
+                    >
+                      <X size={12} />
+                    </button>
+                  </Badge>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No subjects added</p>
+              )}
+            </div>
           </div>
         </TabsContent>
 

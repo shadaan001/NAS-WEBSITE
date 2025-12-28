@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { useKV } from '@github/spark/hooks'
 import { supabase } from '@/lib/supabase'
 
-import CourseForm from '@/components/CourseForm'
+import { CourseForm } from '@/components/CourseForm'
 
 const CoursesComponentClass610 = ({ admin = false, onContact } = {}) => {
   // Start with empty list; fetch from Supabase on mount
