@@ -16,6 +16,7 @@ import { Progress } from "@/components/ui/progress"
 import { useKV } from "@github/spark/hooks"
 import type { Student, AttendanceRecord, Teacher } from "@/types"
 import { teachers } from "@/data/attendanceData"
+import { supabase } from "@/lib/supabase"
 
 interface TeacherStudentsPageProps {
   teacherId: string
@@ -31,13 +32,48 @@ export default function TeacherStudentsPage({ teacherId, onBack }: TeacherStuden
 
   useEffect(() => {
     const loadTeacherData = async () => {
-      const adminTeachers = await window.spark.kv.get<any[]>("admin-teachers-records") || []
-      let teacherData = adminTeachers.find((t: any) => t.id === teacherId)
-      
-      if (!teacherData) {
-        teacherData = teachers.find(t => t.id === teacherId)
+      // Try reading admin cache from KV; if KV is unavailable (dev), fall back to Supabase/local data
+      let adminTeachers: any[] = []
+      try {
+        adminTeachers = await window.spark.kv.get<any[]>("admin-teachers-records") || []
+      } catch (kvErr) {
+        console.warn('Failed to read admin-teachers-records KV in students page:', kvErr)
+        adminTeachers = []
       }
-      
+
+      let teacherData = adminTeachers.find((t: any) => (t?.id?.toString ? t.id.toString() : String(t.id)) === teacherId)
+
+      // If not in KV cache, try Supabase directly (handles Supabase-only teachers)
+      if (!teacherData) {
+        try {
+          const { data: supData, error: supError } = await supabase.from('teachers').select('*').eq('id', teacherId).limit(1)
+          if (supError) {
+            console.error('Supabase fetch error in students page:', supError)
+          }
+          const supTeacher = Array.isArray(supData) && supData.length > 0 ? supData[0] : null
+          if (supTeacher) {
+            const approved = (typeof supTeacher.is_active === 'boolean')
+              ? supTeacher.is_active
+              : (typeof supTeacher.approved === 'boolean' ? supTeacher.approved : true)
+
+            teacherData = {
+              ...supTeacher,
+              id: supTeacher.id,
+              name: supTeacher.name,
+              subjects: supTeacher.subjects || [],
+              approved
+            }
+          }
+        } catch (supErr) {
+          console.debug('Error fetching teacher from Supabase in students page:', supErr)
+        }
+      }
+
+      // Fallback to local seed data
+      if (!teacherData) {
+        teacherData = teachers.find(t => (t?.id?.toString ? t.id.toString() : String(t.id)) === teacherId)
+      }
+
       if (teacherData) {
         setTeacher(teacherData)
       }

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import type { Teacher } from "@/types"
 import { teachers } from "@/data/attendanceData"
+import { supabase } from "@/lib/supabase"
 
 interface TeacherProfilePageProps {
   teacherId: string
@@ -24,13 +25,48 @@ export default function TeacherProfilePage({ teacherId, onLogout }: TeacherProfi
 
   useEffect(() => {
     const loadTeacherData = async () => {
-      const adminTeachers = await window.spark.kv.get<any[]>("admin-teachers-records") || []
-      let teacherData = adminTeachers.find((t: any) => t.id === teacherId)
-      
-      if (!teacherData) {
-        teacherData = teachers.find(t => t.id === teacherId)
+      // Try reading admin cache from KV; if KV is unavailable (dev), fall back to Supabase/local data
+      let adminTeachers: any[] = []
+      try {
+        adminTeachers = await window.spark.kv.get<any[]>("admin-teachers-records") || []
+      } catch (kvErr) {
+        console.warn('Failed to read admin-teachers-records KV in profile:', kvErr)
+        adminTeachers = []
       }
-      
+
+      let teacherData = adminTeachers.find((t: any) => (t?.id?.toString ? t.id.toString() : String(t.id)) === teacherId)
+
+      // If not found in KV, try Supabase directly (handles Supabase-only teachers)
+      if (!teacherData) {
+        try {
+          const { data: supData, error: supError } = await supabase.from('teachers').select('*').eq('id', teacherId).limit(1)
+          if (supError) {
+            console.error('Supabase fetch error in profile:', supError)
+          }
+          const supTeacher = Array.isArray(supData) && supData.length > 0 ? supData[0] : null
+          if (supTeacher) {
+            const approved = (typeof supTeacher.is_active === 'boolean')
+              ? supTeacher.is_active
+              : (typeof supTeacher.approved === 'boolean' ? supTeacher.approved : true)
+
+            teacherData = {
+              ...supTeacher,
+              id: supTeacher.id,
+              name: supTeacher.name,
+              subjects: supTeacher.subjects || [],
+              approved
+            }
+          }
+        } catch (supErr) {
+          console.debug('Error fetching teacher from Supabase in profile:', supErr)
+        }
+      }
+
+      // Fallback to local seed data
+      if (!teacherData) {
+        teacherData = teachers.find(t => (t?.id?.toString ? t.id.toString() : String(t.id)) === teacherId)
+      }
+
       if (teacherData) {
         setTeacher(teacherData)
         setEditedPhone(teacherData.contactNumber || "")
@@ -48,7 +84,18 @@ export default function TeacherProfilePage({ teacherId, onLogout }: TeacherProfi
 
   const handleLogout = () => {
     toast.success("Logged out successfully")
-    onLogout()
+    try {
+      onLogout()
+    } catch (e) {
+      // ignore if onLogout isn't provided or throws
+    }
+
+    // Also dispatch global navigation so we always return to home
+    try {
+      window.dispatchEvent(new CustomEvent('nas:navigate', { detail: { page: 'home' } }))
+    } catch (e) {
+      // ignore in environments where window isn't available
+    }
   }
 
   if (!teacher) {

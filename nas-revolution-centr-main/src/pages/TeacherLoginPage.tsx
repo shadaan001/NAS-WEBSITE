@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { CredentialsService } from "@/services/credentials"
+import { supabase } from "@/lib/supabase"
 import { AuthHelper } from "@/lib/useAuth"
 
 interface TeacherLoginPageProps {
@@ -33,9 +34,53 @@ export default function TeacherLoginPage({ onLogin, onBackToHome }: TeacherLogin
       const result = await CredentialsService.verifyCredentials(username.trim(), password)
       
       if (result.success && result.role === "teacher") {
-        const teachers = await window.spark.kv.get<any[]>("admin-teachers-records") || []
-        const teacher = teachers.find((t: any) => t.id === result.userId)
-        
+        // Try KV first (local admin cache). Wrap in try/catch because local KV may be unavailable in dev.
+        let teachers: any[] = []
+        try {
+          teachers = await window.spark.kv.get<any[]>("admin-teachers-records") || []
+        } catch (kvErr) {
+          console.warn('Failed to read admin-teachers-records KV (falling back to Supabase):', kvErr)
+          teachers = []
+        }
+        let teacher = teachers.find((t: any) => (t?.id?.toString ? t.id.toString() : String(t.id)) === result.userId)
+
+        // If not present in KV, fetch the teacher from Supabase directly (handles Supabase-only accounts)
+        if (!teacher) {
+          try {
+            const { data: supData, error: supError } = await supabase.from('teachers').select('*').eq('id', result.userId).limit(1)
+            if (supError) {
+              console.error('Supabase fetch error for teacher:', supError)
+            }
+
+            const supTeacher = Array.isArray(supData) && supData.length > 0 ? supData[0] : null
+            if (supTeacher) {
+              // Normalize field names expected by the app
+              // Treat explicit false as not approved; treat null/undefined as approved by default
+              const approved = (typeof supTeacher.is_active === 'boolean')
+                ? supTeacher.is_active
+                : (typeof supTeacher.approved === 'boolean' ? supTeacher.approved : true)
+
+              teacher = {
+                ...supTeacher,
+                id: supTeacher.id,
+                name: supTeacher.name,
+                subjects: supTeacher.subjects || [],
+                approved
+              }
+
+              // Merge into KV cache so future logins don't need Supabase lookup
+              try {
+                const newTeachers = Array.isArray(teachers) ? [...teachers, teacher] : [teacher]
+                await window.spark.kv.set('admin-teachers-records', newTeachers)
+              } catch (kvErr) {
+                console.warn('Failed to update admin-teachers-records KV:', kvErr)
+              }
+            }
+          } catch (fetchErr) {
+            console.error('Error fetching teacher from Supabase:', fetchErr)
+          }
+        }
+
         if (!teacher) {
           toast.error("Teacher account not found. Contact administrator.")
           setIsLoading(false)
