@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { BookOpen, ArrowLeft, Eye, EyeSlash } from "@phosphor-icons/react"
 import { toast } from "sonner"
-import { CredentialsService } from "@/services/credentials"
+import { supabase } from "@/lib/supabase"
 import { AuthHelper } from "@/lib/useAuth"
 
 interface LoginPageProps {
@@ -29,32 +29,38 @@ export default function LoginPage({ onLogin, onBackToHome }: LoginPageProps) {
     setIsLoading(true)
 
     try {
-      const result = await CredentialsService.verifyCredentials(username.trim(), password)
-      
-      if (result.success && result.role === "student") {
-        const students = await spark.kv.get<any[]>("admin-students-records") || []
-        const student = students.find((s: any) => s.id === result.userId)
-        
-        if (!student) {
-          toast.error("Student account not found. Contact administrator.")
-          setIsLoading(false)
-          return
-        }
+      const { data: student, error } = await supabase
+        .from('Students')
+        .select('id, username, password, name')
+        .eq('username', username.trim())
+        .single()
 
-        AuthHelper.createSession("student", result.userId!, {
-          name: student.name,
-          loginTime: new Date().toISOString()
-        })
-        
-        toast.success(`Welcome back, ${student.name}!`)
-        setTimeout(() => {
-          setIsLoading(false)
-          onLogin()
-        }, 500)
-      } else {
-        toast.error(result.message)
+      if (error) {
+        if (error.code === 'PGRST116') {
+          toast.error("Invalid username or password")
+        } else {
+          toast.error("Login failed. Please try again.")
+        }
         setIsLoading(false)
+        return
       }
+
+      if (!student || student.password !== password) {
+        toast.error("Invalid username or password")
+        setIsLoading(false)
+        return
+      }
+
+      AuthHelper.createSession("student", student.id, {
+        name: student.name,
+        loginTime: new Date().toISOString()
+      })
+      
+      toast.success(`Welcome back, ${student.name}!`)
+      setTimeout(() => {
+        setIsLoading(false)
+        onLogin()
+      }, 500)
     } catch (error) {
       console.error("Login error:", error)
       toast.error("Failed to login. Please try again.")
