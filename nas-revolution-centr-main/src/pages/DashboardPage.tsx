@@ -1,4 +1,5 @@
-import { Bell, CalendarCheck, BookOpen, ChartBar, CurrencyDollar, Clock, VideoCamera } from "@phosphor-icons/react"
+import { useState, useEffect } from "react"
+import { Bell, CalendarCheck, BookOpen, ChartBar, CurrencyDollar, Clock, VideoCamera, SignOut } from "@phosphor-icons/react"
 import BubbleIcon from "@/components/school/BubbleIcon"
 import QuickCard from "@/components/school/QuickCard"
 import StatusBadge from "@/components/school/StatusBadge"
@@ -7,16 +8,80 @@ import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { studentData, upcomingTests, homeworkData, feesData, notificationsData } from "@/data/mockData"
+import { upcomingTests, homeworkData, feesData, notificationsData } from "@/data/mockData"
 import { attendanceSummary } from "@/data/attendanceData"
+import { supabase } from "@/lib/supabase"
+import { AuthHelper } from "@/lib/useAuth"
 
 interface DashboardPageProps {
   onNavigate: (tab: "attendance" | "homework" | "lectures" | "admin") => void
 }
 
 export default function DashboardPage({ onNavigate }: DashboardPageProps) {
+  const [studentData, setStudentData] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
   const unreadNotifications = notificationsData.filter((n) => !n.read).length
   const pendingHomework = homeworkData.filter((h) => h.status === "pending").length
+
+  useEffect(() => {
+    const fetchStudentData = async () => {
+      try {
+        const session = AuthHelper.getSession()
+        if (!session || session.role !== "student") {
+          console.error("No student session found")
+          setIsLoading(false)
+          return
+        }
+
+        const { data: student, error } = await supabase
+          .from('Students')
+          .select('*')
+          .eq('id', session.userId)
+          .single()
+
+        if (error) {
+          console.error("Error fetching student data:", error)
+          setIsLoading(false)
+          return
+        }
+
+        setStudentData(student)
+      } catch (error) {
+        console.error("Error fetching student data:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchStudentData()
+  }, [])
+
+  const handleLogout = () => {
+    AuthHelper.clearSession()
+    window.location.href = "/"
+  }
+
+  if (isLoading) {
+    return (
+      <div className="pb-20 px-4 pt-16 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!studentData) {
+    return (
+      <div className="pb-20 px-4 pt-16 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-muted-foreground">Unable to load student data. Please try logging in again.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="pb-20 px-4 pt-16 space-y-5 animate-fade-in">
@@ -32,15 +97,24 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             <p className="text-sm text-muted-foreground">{studentData.class} • Roll No. {studentData.rollNumber}</p>
           </div>
         </div>
-        <div className="relative">
-          <button className="p-2 rounded-full bg-card border border-border active:scale-95 transition-transform">
-            <Bell size={24} className="text-foreground" />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleLogout}
+            className="p-2 rounded-full bg-card border border-border active:scale-95 transition-transform hover:bg-destructive/10 hover:border-destructive/20"
+            title="Logout"
+          >
+            <SignOut size={20} className="text-foreground hover:text-destructive" />
           </button>
-          {unreadNotifications > 0 && (
-            <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center bg-accent text-accent-foreground text-xs">
-              {unreadNotifications}
-            </Badge>
-          )}
+          <div className="relative">
+            <button className="p-2 rounded-full bg-card border border-border active:scale-95 transition-transform">
+              <Bell size={24} className="text-foreground" />
+            </button>
+            {unreadNotifications > 0 && (
+              <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center bg-accent text-accent-foreground text-xs">
+                {unreadNotifications}
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
 
@@ -78,7 +152,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         />
       </div>
 
-      <Card className="p-4 rounded-2xl card-shadow animate-slide-up" style={{ animationDelay: "0.2s" }}>
+      <Card className="p-4 rounded-2l card-shadow animate-slide-up" style={{ animationDelay: "0.2s" }}>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-bold text-heading text-foreground">Upcoming Tests</h2>
           <Clock size={20} className="text-muted-foreground" />
@@ -103,7 +177,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         </div>
       </Card>
 
-      <Card className="p-4 rounded-2xl card-shadow animate-slide-up" style={{ animationDelay: "0.3s" }}>
+      <Card className="p-4 rounded-2l card-shadow animate-slide-up" style={{ animationDelay: "0.3s" }}>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-bold text-heading text-foreground">Attendance Overview</h2>
         </div>
@@ -111,22 +185,22 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           <CircularProgress percentage={attendanceSummary.percentage} size={140} strokeWidth={10} />
           <div className="grid grid-cols-3 gap-3 w-full">
             <div className="text-center p-3 rounded-xl bg-secondary/10">
-              <p className="text-2xl font-bold text-secondary text-heading">{attendanceSummary.presentDays}</p>
+              <p className="text-2l font-bold text-secondary text-heading">{attendanceSummary.presentDays}</p>
               <p className="text-xs text-muted-foreground mt-1">Present</p>
             </div>
             <div className="text-center p-3 rounded-xl bg-destructive/10">
-              <p className="text-2xl font-bold text-destructive text-heading">{attendanceSummary.absentDays}</p>
+              <p className="text-2l font-bold text-destructive text-heading">{attendanceSummary.absentDays}</p>
               <p className="text-xs text-muted-foreground mt-1">Absent</p>
             </div>
             <div className="text-center p-3 rounded-xl bg-accent/10">
-              <p className="text-2xl font-bold text-accent text-heading">{attendanceSummary.lateDays}</p>
+              <p className="text-2l font-bold text-accent text-heading">{attendanceSummary.lateDays}</p>
               <p className="text-xs text-muted-foreground mt-1">Late</p>
             </div>
           </div>
         </div>
       </Card>
 
-      <Card className="p-4 rounded-2xl card-shadow animate-slide-up" style={{ animationDelay: "0.4s" }}>
+      <Card className="p-4 rounded-2l card-shadow animate-slide-up" style={{ animationDelay: "0.4s" }}>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-bold text-heading text-foreground">Latest Homework</h2>
           <button
