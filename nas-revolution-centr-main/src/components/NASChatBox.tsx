@@ -8,9 +8,10 @@ import { toast } from "sonner"
 import { marked } from "marked"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import "./NASChatMarkdown.css"
+import { supabase, VITE_GOOGLE_API_KEY } from "@/lib/supabase"
 
 // Initialize Gemini API (Free tier)
-const genAI = new GoogleGenerativeAI("AIzaSyAD3u6oYnqfcFb8LbQjyjsuZ43JWltl9bY")
+const genAI = new GoogleGenerativeAI(VITE_GOOGLE_API_KEY)
 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
 
 interface NASChatBoxProps {
