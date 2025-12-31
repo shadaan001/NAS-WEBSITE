@@ -1,7 +1,8 @@
 import { motion } from "framer-motion"
 import { ArrowLeft } from "@phosphor-icons/react"
-import { useState, useRef, MouseEvent } from "react"
+import { useState, useRef, MouseEvent, useEffect } from "react"
 import { useKV } from "@github/spark/hooks"
+import { supabase } from "@/lib/supabase"
 import BackgroundScene from "@/components/BackgroundScene"
 
 interface Teacher {
@@ -137,8 +138,37 @@ interface TeachersInfoPageProps {
 
 export default function TeachersInfoPage({ onBack }: TeachersInfoPageProps) {
   const [teacherInfoList] = useKV<Teacher[]>("teacher-info-list", [])
-  
-  const teachers = (teacherInfoList && teacherInfoList.length > 0) ? teacherInfoList : defaultTeachers
+  const [teachersList, setTeachersList] = useState<Teacher[] | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    const loadTeachers = async () => {
+      try {
+        const { data, error } = await supabase.from('teachers').select('*')
+        if (error) {
+          console.error('Supabase fetch error in TeachersInfoPage:', error)
+          return
+        }
+
+        if (!Array.isArray(data)) return
+
+        // Normalize rows: treat null is_active as true (active)
+        const normalized = data.map((t: any) => ({
+          ...t,
+          is_active: typeof t.is_active === 'boolean' ? t.is_active : true,
+        }))
+
+        if (mounted) setTeachersList(normalized)
+      } catch (err) {
+        console.error('Error loading teachers from Supabase in TeachersInfoPage:', err)
+      }
+    }
+
+    loadTeachers()
+    return () => { mounted = false }
+  }, [])
+
+  const teachers = teachersList ?? ((teacherInfoList && teacherInfoList.length > 0) ? teacherInfoList : defaultTeachers)
 
   return (
     <>
