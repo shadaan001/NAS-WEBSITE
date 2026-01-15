@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
+import { supabase } from "@/lib/supabase"
 import AttendanceCalendar from "@/components/AttendanceCalendar"
 import AttendanceModal from "@/components/AttendanceModal"
 import { LocalDB } from "@/lib/useLocalDB"
@@ -33,8 +34,20 @@ export default function TeacherAttendance({ teacherId, onBack }) {
     const loadData = async () => {
       try {
         console.log("Loading teacher attendance data for teacherId:", teacherId)
-        const storedStudents = await window.spark.kv.get("admin-students-records") || []
-        const storedTeachers = await window.spark.kv.get("admin-teachers-records") || []
+        let storedStudents = []
+        let storedTeachers = []
+
+        try {
+          storedStudents = await window.spark.kv.get("admin-students-records") || []
+        } catch (kvErr) {
+          console.warn('Failed to read admin-students-records KV in attendance:', kvErr)
+        }
+
+        try {
+          storedTeachers = await window.spark.kv.get("admin-teachers-records") || []
+        } catch (kvErr) {
+          console.warn('Failed to read admin-teachers-records KV in attendance:', kvErr)
+        }
         
         let teacherData = storedTeachers.find(t => t.id === teacherId)
         
@@ -43,7 +56,32 @@ export default function TeacherAttendance({ teacherId, onBack }) {
         }
         
         if (!teacherData) {
-          console.warn("Teacher not found in KV or LocalDB, checking fallback data:", teacherId)
+          try {
+            const { data: supData, error: supError } = await supabase.from('teachers').select('*').eq('id', teacherId).limit(1)
+            if (supError) {
+              console.error('Supabase fetch error in attendance:', supError)
+            }
+            const supTeacher = Array.isArray(supData) && supData.length > 0 ? supData[0] : null
+            if (supTeacher) {
+              const approved = (typeof supTeacher.is_active === 'boolean')
+                ? supTeacher.is_active
+                : (typeof supTeacher.approved === 'boolean' ? supTeacher.approved : true)
+
+              teacherData = {
+                ...supTeacher,
+                id: supTeacher.id,
+                name: supTeacher.name,
+                subjects: supTeacher.subjects || [],
+                approved
+              }
+            }
+          } catch (supErr) {
+            console.debug('Error fetching teacher from Supabase in attendance:', supErr)
+          }
+        }
+
+        if (!teacherData) {
+          console.warn("Teacher not found in KV or LocalDB or Supabase, checking fallback data:", teacherId)
           const { teachers: fallbackTeachers } = await import("@/data/attendanceData")
           teacherData = fallbackTeachers.find(t => t.id === teacherId)
         }

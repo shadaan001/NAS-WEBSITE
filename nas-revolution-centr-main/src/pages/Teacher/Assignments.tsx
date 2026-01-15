@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { useKV } from "@github/spark/hooks"
+import { supabase } from "@/lib/supabase"
 import { BookOpen, Plus, Calendar, Users, CheckCircle, Clock } from "@phosphor-icons/react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -38,9 +39,41 @@ export default function TeacherAssignments({ teacherId, onBack }: TeacherAssignm
   useEffect(() => {
     const loadTeacherData = async () => {
       try {
-        const storedTeachers = await window.spark.kv.get<any[]>("admin-teachers-records") || []
+        let storedTeachers: any[] = []
+        try {
+          storedTeachers = await window.spark.kv.get<any[]>("admin-teachers-records") || []
+        } catch (kvErr) {
+          console.warn('Failed to read admin-teachers-records KV in assignments:', kvErr)
+          storedTeachers = []
+        }
+
         let teacherData = storedTeachers.find(t => t.id === teacherId)
         
+        if (!teacherData) {
+          try {
+            const { data: supData, error: supError } = await supabase.from('teachers').select('*').eq('id', teacherId).limit(1)
+            if (supError) {
+              console.error('Supabase fetch error in assignments:', supError)
+            }
+            const supTeacher = Array.isArray(supData) && supData.length > 0 ? supData[0] : null
+            if (supTeacher) {
+              const approved = (typeof supTeacher.is_active === 'boolean')
+                ? supTeacher.is_active
+                : (typeof supTeacher.approved === 'boolean' ? supTeacher.approved : true)
+
+              teacherData = {
+                ...supTeacher,
+                id: supTeacher.id,
+                name: supTeacher.name,
+                subjects: supTeacher.subjects || [],
+                approved
+              }
+            }
+          } catch (supErr) {
+            console.debug('Error fetching teacher from Supabase in assignments:', supErr)
+          }
+        }
+
         if (!teacherData) {
           const { teachers: fallbackTeachers } = await import("@/data/attendanceData")
           teacherData = fallbackTeachers.find(t => t.id === teacherId)
